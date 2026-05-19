@@ -1,0 +1,2566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WC 2026 Predictor</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --cream:#f7f5f0;--cream2:#f0ede6;--white:#ffffff;
+    --ink:#1a1a18;--ink2:#3d3d38;--ink3:#6e6e67;--ink4:#9e9e95;
+    --green:#2a5c3f;--green-light:#3a7d56;--red:#b8312f;
+    --border:#e0ddd6;--border2:#ccc9c0;
+    --gold:#b8860b;
+    --font-serif:'Playfair Display',Georgia,serif;
+    --font-sans:'Inter',system-ui,sans-serif;
+    --r:4px;--rl:8px;
+  }
+  html,body,#root{height:100%}
+  body{background:var(--cream);color:var(--ink);font-family:var(--font-sans);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  #root{display:flex;flex-direction:column;min-height:100vh}
+  .app{display:flex;flex-direction:column;min-height:100vh}
+
+  /* Auth */
+  .auth-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:2rem}
+  .auth-card{width:100%;max-width:400px}
+  .auth-logo{text-align:center;margin-bottom:2.5rem}
+  .auth-logo h1{font-family:var(--font-serif);font-size:2.6rem;font-weight:400;color:var(--ink);letter-spacing:-0.5px;line-height:1.15}
+  .auth-logo p{color:var(--ink3);font-size:12px;margin-top:6px;letter-spacing:2px;text-transform:uppercase}
+  .auth-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:1.5rem}
+  .auth-tab{flex:1;padding:10px;text-align:center;font-size:11px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--ink3);letter-spacing:1px;text-transform:uppercase;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+  .auth-tab.active{color:var(--ink);border-bottom-color:var(--ink)}
+  .field{margin-bottom:1.25rem}
+  .field label{display:block;font-size:11px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+  .field input{width:100%;padding:10px 12px;background:var(--white);border:1px solid var(--border2);border-radius:var(--r);color:var(--ink);font-family:var(--font-sans);font-size:14px;outline:none;transition:border .15s}
+  .field input:focus{border-color:var(--ink2)}
+  .btn{width:100%;padding:11px;background:var(--ink);border:1px solid var(--ink);border-radius:var(--r);color:var(--white);font-family:var(--font-sans);font-size:11px;font-weight:500;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .15s}
+  .btn:hover{background:var(--ink2)}.btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn-outline{background:transparent;color:var(--ink)}.btn-outline:hover{background:var(--ink);color:var(--white)}
+  .btn-green{background:var(--green);border-color:var(--green)}.btn-green:hover{background:var(--green-light);border-color:var(--green-light)}
+  .btn-sm{width:auto;padding:7px 14px;font-size:11px}
+  .error-msg{background:#fdf0f0;border:1px solid #e8c5c4;color:var(--red);border-radius:var(--r);padding:10px 12px;font-size:13px;margin-bottom:1rem}
+  .success-msg{background:#f0f7f3;border:1px solid #b8d9c8;color:var(--green);border-radius:var(--r);padding:10px 12px;font-size:13px;margin-bottom:1rem}
+
+  /* Nav */
+  .nav{background:var(--white);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:100}
+  .nav-logo{font-family:var(--font-serif);font-size:1.3rem;font-weight:500;color:var(--ink);letter-spacing:-.3px}
+  .nav-links{display:flex}
+  .nav-link{padding:0 14px;height:60px;display:flex;align-items:center;font-size:11px;font-weight:500;letter-spacing:.8px;text-transform:uppercase;cursor:pointer;border:none;background:transparent;color:var(--ink3);border-bottom:2px solid transparent;transition:all .15s}
+  .nav-link:hover{color:var(--ink)}.nav-link.active{color:var(--ink);border-bottom-color:var(--ink)}
+  .nav-right{display:flex;align-items:center;gap:12px}
+  .nav-user{font-size:12px;color:var(--ink3)}
+  .nav-signout{font-size:11px;font-weight:500;letter-spacing:.8px;text-transform:uppercase;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--ink3);padding:6px 12px;border-radius:var(--r);transition:all .15s}
+  .nav-signout:hover{color:var(--ink);border-color:var(--ink2)}
+
+  /* Main */
+  .main{flex:1;padding:3rem 2rem;max-width:1100px;margin:0 auto;width:100%}
+  .page-header{margin-bottom:2.5rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem}
+  .page-title{font-family:var(--font-serif);font-size:2.2rem;font-weight:400;color:var(--ink);letter-spacing:-.5px;line-height:1.2;margin-bottom:.3rem}
+  .page-sub{color:var(--ink3);font-size:13px}
+
+  /* Stat cards */
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:2.5rem}
+  .stat-card{background:var(--white);padding:1.25rem 1.5rem}
+  .stat-label{font-size:10px;font-weight:600;color:var(--ink4);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:6px}
+  .stat-value{font-family:var(--font-serif);font-size:1.9rem;font-weight:400;color:var(--ink);line-height:1}
+  .stat-sub{font-size:11px;color:var(--ink4);margin-top:4px}
+
+  /* Info box */
+  .info-box{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);padding:1.25rem 1.5rem;margin-bottom:1.5rem}
+  .info-box p{font-size:14px;color:var(--ink2);line-height:1.8}
+
+  /* CTA strip */
+  .cta-strip{background:var(--ink);border-radius:var(--rl);padding:1.5rem 2rem;margin-bottom:2.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+  .cta-strip h3{font-family:var(--font-serif);font-size:1.1rem;font-weight:400;color:var(--white);margin-bottom:3px}
+  .cta-strip p{font-size:12px;color:#9e9e95}
+  .cta-strip .btn{width:auto;padding:10px 20px;background:var(--white);border-color:var(--white);color:var(--ink)}
+  .cta-strip .btn:hover{background:var(--cream2)}
+
+  /* Nav pills (predict tabs) */
+  .pred-nav{display:flex;background:var(--ink);border-radius:var(--rl);padding:4px;margin-bottom:2rem;gap:2px;width:fit-content}
+  .pred-nav-btn{padding:8px 18px;border-radius:6px;font-size:11px;font-weight:500;letter-spacing:.8px;text-transform:uppercase;cursor:pointer;border:none;background:transparent;color:rgba(255,255,255,.55);transition:all .15s}
+  .pred-nav-btn:hover{color:rgba(255,255,255,.8)}
+  .pred-nav-btn.active{background:var(--white);color:var(--ink)}
+
+  /* Tabs (leaderboard) */
+  .tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:2rem}
+  .tab{padding:10px 0;margin-right:24px;font-size:11px;font-weight:500;letter-spacing:.8px;text-transform:uppercase;cursor:pointer;border:none;background:transparent;color:var(--ink3);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+  .tab:hover{color:var(--ink)}.tab.active{color:var(--ink);border-bottom-color:var(--ink)}
+
+  /* Group predictions */
+  .group-section{margin-bottom:2rem}
+  .group-title{font-family:var(--font-serif);font-size:.95rem;font-weight:500;color:var(--ink);margin-bottom:.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+  .group-layout{display:flex;gap:1.5rem;align-items:flex-start}
+  .group-matches{flex:1;min-width:0}
+  .group-standings-panel{width:220px;flex-shrink:0;background:var(--white);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;position:sticky;top:80px}
+  .standings-header{padding:8px 12px;background:var(--cream);border-bottom:1px solid var(--border);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--ink3)}
+  .standings-row{display:flex;align-items:center;gap:6px;padding:7px 12px;border-bottom:1px solid var(--border);font-size:12px}
+  .standings-row:last-child{border-bottom:none}
+  .standings-pos{font-family:var(--font-serif);font-size:.9rem;color:var(--ink3);width:14px;flex-shrink:0}
+  .standings-pos.qual{color:var(--green);font-weight:700}
+  .standings-flag{font-size:15px;line-height:1}
+  .standings-name{flex:1;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .standings-pts{font-family:var(--font-serif);font-size:.9rem;font-weight:500;color:var(--ink);min-width:16px;text-align:right}
+  .standings-gd{font-size:11px;color:var(--ink4);min-width:28px;text-align:right}
+  .match-row{display:flex;flex-direction:column;padding:10px 0;border-bottom:1px solid var(--border)}
+  .match-row:last-child{border-bottom:none}
+  .match-row-meta{font-size:10px;color:var(--ink4);text-align:center;margin-bottom:8px;line-height:1.6}
+  .match-row-teams{display:flex;align-items:center;gap:8px}
+  .match-team{flex:1;font-size:13px;display:flex;align-items:center;gap:6px;color:var(--ink2)}
+  .match-team span:first-child{font-size:16px;line-height:1}
+  .match-team.away{justify-content:flex-end}
+  .score-input{width:38px;height:32px;text-align:center;background:var(--white);border:1px solid var(--border2);border-radius:var(--r);color:var(--ink);font-size:14px;font-weight:500;outline:none;font-family:var(--font-serif);transition:border .15s}
+  .score-input:focus{border-color:var(--ink2)}.score-input:disabled{background:var(--cream);color:var(--ink3)}
+  .match-vs{font-size:10px;color:var(--ink4);width:16px;text-align:center;text-transform:uppercase;letter-spacing:1px}
+
+  /* Bracket tree */
+  .bracket-wrap{overflow-x:auto;padding-bottom:2rem}
+  .bracket-tree{display:flex;gap:2px;align-items:flex-start;min-width:1000px}
+  .bracket-col{display:flex;flex-direction:column;flex:1;padding:0 4px;min-width:180px}
+  .bracket-col-header{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--ink4);text-align:center;padding:8px 0;border-bottom:1px solid var(--border);margin-bottom:12px;white-space:nowrap}
+  .bracket-col-pts{font-size:9px;color:var(--ink4);font-weight:400;letter-spacing:0;text-transform:none}
+  .bracket-match-wrap{position:relative;margin-bottom:8px}
+  .bracket-match{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
+  .bracket-match-label{font-size:9px;color:var(--ink4);text-align:center;padding:3px 6px;background:var(--cream);border-bottom:1px solid var(--border);letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bracket-team{display:flex;align-items:center;gap:7px;padding:7px 10px;cursor:pointer;transition:background .1s;border-bottom:1px solid var(--border)}
+  .bracket-team:last-child{border-bottom:none}
+  .bracket-team:hover:not(.disabled){background:var(--cream)}
+  .bracket-team.selected{background:#f0f7f3;border-left:3px solid var(--green)}
+  .bracket-team.disabled{cursor:default}.bracket-team.tbd{opacity:.25;cursor:default}
+  .bracket-flag{width:18px;height:18px;flex-shrink:0}
+  .bracket-name{flex:1;font-size:11px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bracket-winner-badge{font-size:9px;color:var(--green);font-weight:700;flex-shrink:0}
+
+  /* Leaderboard */
+  .lb-wrap{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
+  .lb-table{width:100%;border-collapse:collapse}
+  .lb-table th{text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--ink4);padding:10px 16px;border-bottom:1px solid var(--border);background:var(--cream)}
+  .lb-table td{padding:12px 16px;border-bottom:1px solid var(--border);font-size:14px}
+  .lb-table tr:last-child td{border-bottom:none}
+  .lb-table tr:hover td{background:var(--cream)}
+  .lb-rank{font-family:var(--font-serif);font-size:1.05rem;font-weight:400;color:var(--ink3)}
+  .lb-rank.top1{color:var(--ink);font-weight:700}.lb-rank.top2,.lb-rank.top3{color:var(--ink2)}
+  .lb-pts{font-family:var(--font-serif);font-size:1.05rem;font-weight:500;color:var(--ink)}
+  .lb-you{background:#f7faf8}.lb-you:hover td{background:#f0f7f3}
+
+  /* Scores page */
+  .scores-user-section{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:1rem}
+  .scores-user-header{padding:.875rem 1.25rem;background:var(--cream);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+  .scores-user-name{font-family:var(--font-serif);font-size:.95rem;font-weight:500;color:var(--ink)}
+  .scores-user-body{padding:1.25rem}
+
+  /* Scores grid for knockout */
+  .ko-grid{overflow-x:auto;margin-bottom:1.5rem}
+  .ko-grid table{border-collapse:collapse;min-width:600px}
+  .ko-grid th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--ink4);padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;background:var(--cream)}
+  .ko-grid td{padding:7px 10px;border-bottom:1px solid var(--border);font-size:12px;white-space:nowrap}
+  .ko-grid .tick{color:var(--green);font-weight:700;text-align:center}
+  .ko-grid .cross{color:var(--border2);text-align:center}
+  .ko-grid .team-cell{color:var(--ink2)}
+  .ko-grid .user-col{text-align:center;min-width:60px}
+
+  /* Special grid */
+  .spec-grid{overflow-x:auto;margin-bottom:1.5rem}
+  .spec-grid table{border-collapse:collapse;min-width:600px}
+  .spec-grid th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--ink4);padding:8px 10px;border-bottom:1px solid var(--border);background:var(--cream)}
+  .spec-grid td{padding:8px 10px;border-bottom:1px solid var(--border);font-size:12px;color:var(--ink2)}
+  .spec-grid tr:last-child td{border-bottom:none}
+
+  /* Misc */
+  .save-bar{position:sticky;bottom:0;background:var(--white);border-top:1px solid var(--border);padding:.875rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+  .save-bar p{font-size:12px;color:var(--ink3)}
+  .badge{display:inline-block;padding:2px 8px;border-radius:100px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .badge-green{background:#e8f4ee;color:var(--green)}
+  .lock-banner{background:#fef9ec;border:1px solid #f0dfa0;border-radius:var(--rl);padding:10px 14px;margin-bottom:1.5rem;font-size:13px;color:#7a6200}
+  .section-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink4);margin-bottom:.75rem}
+  .scoring-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
+  .scoring-card{background:var(--white);padding:1.25rem 1.5rem}
+  .scoring-card-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--ink4);margin-bottom:8px}
+  .scoring-card-body{font-size:13px;color:var(--ink2);line-height:1.8}
+  .admin-match{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--white);border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px}
+  .admin-match.has-result{border-color:#b8d9c8;background:#fafdf9}
+  .admin-team{flex:1;font-size:13px;display:flex;align-items:center;gap:6px;color:var(--ink2)}
+  .admin-team.away{justify-content:flex-end}
+  .loading{display:flex;align-items:center;justify-content:center;height:200px;color:var(--ink3);font-size:13px}
+  select{appearance:none}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {createClient}=supabase;
+const SUPABASE_URL='https://wetcgzgbgufubuincing.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndldGNnemdiZ3VmdWJ1aW5jaW5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0NzkxODAsImV4cCI6MjA5NDA1NTE4MH0.3675kAWhTJimirWtqZzySpqVb-MXN5Wdjty_9sMY48M';
+const sb=createClient(SUPABASE_URL,SUPABASE_KEY);
+const {useState,useEffect,useMemo}=React;
+const GROUPS=['A','B','C','D','E','F','G','H','I','J','K','L'];
+const STAGE_PTS={r32:1,r16:2,qf:4,sf:6,final:8};
+const STAGE_LABELS={r32:'Round of 32',r16:'Round of 16',qf:'Quarter Finals',sf:'Semi Finals',final:'Final'};
+const DEADLINE=new Date('2026-06-10T21:59:00Z');
+const isLocked=()=>new Date()>DEADLINE;
+
+const MATCH_SCHEDULE={
+  1:{date:"Jun 11",cet:"21:00",gmt:"20:00",venue:"Estadio Azteca, Mexico City"},
+  2:{date:"Jun 12",cet:"04:00",gmt:"03:00",venue:"Estadio Akron, Zapopan"},
+  3:{date:"Jun 18",cet:"18:00",gmt:"17:00",venue:"Mercedes-Benz Stadium, Atlanta"},
+  4:{date:"Jun 19",cet:"03:00",gmt:"02:00",venue:"Estadio Akron, Zapopan"},
+  5:{date:"Jun 25",cet:"03:00",gmt:"02:00",venue:"Estadio Azteca, Mexico City"},
+  6:{date:"Jun 25",cet:"03:00",gmt:"02:00",venue:"Estadio BBVA, Monterrey"},
+  7:{date:"Jun 12",cet:"21:00",gmt:"20:00",venue:"BMO Field, Toronto"},
+  8:{date:"Jun 13",cet:"21:00",gmt:"20:00",venue:"Levi's Stadium, Santa Clara"},
+  9:{date:"Jun 18",cet:"21:00",gmt:"20:00",venue:"SoFi Stadium, Inglewood"},
+  10:{date:"Jun 19",cet:"00:00",gmt:"23:00",venue:"BC Place, Vancouver"},
+  11:{date:"Jun 24",cet:"21:00",gmt:"20:00",venue:"BC Place, Vancouver"},
+  12:{date:"Jun 24",cet:"21:00",gmt:"20:00",venue:"Lumen Field, Seattle"},
+  13:{date:"Jun 13",cet:"00:00",gmt:"23:00",venue:"MetLife Stadium, East Rutherford"},
+  14:{date:"Jun 14",cet:"03:00",gmt:"02:00",venue:"Gillette Stadium, Foxborough"},
+  15:{date:"Jun 19",cet:"00:00",gmt:"23:00",venue:"Gillette Stadium, Foxborough"},
+  16:{date:"Jun 19",cet:"02:30",gmt:"01:30",venue:"Lincoln Financial Field, Philadelphia"},
+  17:{date:"Jun 24",cet:"00:00",gmt:"23:00",venue:"Hard Rock Stadium, Miami Gardens"},
+  18:{date:"Jun 24",cet:"00:00",gmt:"23:00",venue:"Mercedes-Benz Stadium, Atlanta"},
+  19:{date:"Jun 13",cet:"03:00",gmt:"02:00",venue:"SoFi Stadium, Inglewood"},
+  20:{date:"Jun 14",cet:"06:00",gmt:"05:00",venue:"BC Place, Vancouver"},
+  21:{date:"Jun 19",cet:"21:00",gmt:"20:00",venue:"Lumen Field, Seattle"},
+  22:{date:"Jun 20",cet:"05:00",gmt:"04:00",venue:"Levi's Stadium, Santa Clara"},
+  23:{date:"Jun 26",cet:"04:00",gmt:"03:00",venue:"SoFi Stadium, Inglewood"},
+  24:{date:"Jun 26",cet:"04:00",gmt:"03:00",venue:"Levi's Stadium, Santa Clara"},
+  25:{date:"Jun 14",cet:"19:00",gmt:"18:00",venue:"NRG Stadium, Houston"},
+  26:{date:"Jun 15",cet:"01:00",gmt:"00:00",venue:"Lincoln Financial Field, Philadelphia"},
+  27:{date:"Jun 20",cet:"22:00",gmt:"21:00",venue:"BMO Field, Toronto"},
+  28:{date:"Jun 21",cet:"02:00",gmt:"01:00",venue:"Arrowhead Stadium, Kansas City"},
+  29:{date:"Jun 25",cet:"22:00",gmt:"21:00",venue:"MetLife Stadium, East Rutherford"},
+  30:{date:"Jun 25",cet:"22:00",gmt:"21:00",venue:"Lincoln Financial Field, Philadelphia"},
+  31:{date:"Jun 14",cet:"22:00",gmt:"21:00",venue:"AT&T Stadium, Arlington"},
+  32:{date:"Jun 15",cet:"04:00",gmt:"03:00",venue:"Estadio BBVA, Monterrey"},
+  33:{date:"Jun 20",cet:"19:00",gmt:"18:00",venue:"NRG Stadium, Houston"},
+  34:{date:"Jun 21",cet:"06:00",gmt:"05:00",venue:"Estadio BBVA, Monterrey"},
+  35:{date:"Jun 25",cet:"01:00",gmt:"00:00",venue:"AT&T Stadium, Arlington"},
+  36:{date:"Jun 25",cet:"01:00",gmt:"00:00",venue:"Arrowhead Stadium, Kansas City"},
+  37:{date:"Jun 15",cet:"21:00",gmt:"20:00",venue:"Lumen Field, Seattle"},
+  38:{date:"Jun 16",cet:"03:00",gmt:"02:00",venue:"SoFi Stadium, Inglewood"},
+  39:{date:"Jun 21",cet:"21:00",gmt:"20:00",venue:"SoFi Stadium, Inglewood"},
+  40:{date:"Jun 22",cet:"03:00",gmt:"02:00",venue:"BC Place, Vancouver"},
+  41:{date:"Jun 27",cet:"05:00",gmt:"04:00",venue:"Lumen Field, Seattle"},
+  42:{date:"Jun 27",cet:"05:00",gmt:"04:00",venue:"BC Place, Vancouver"},
+  43:{date:"Jun 15",cet:"18:00",gmt:"17:00",venue:"Mercedes-Benz Stadium, Atlanta"},
+  44:{date:"Jun 16",cet:"00:00",gmt:"23:00",venue:"Hard Rock Stadium, Miami Gardens"},
+  45:{date:"Jun 21",cet:"18:00",gmt:"17:00",venue:"Mercedes-Benz Stadium, Atlanta"},
+  46:{date:"Jun 22",cet:"00:00",gmt:"23:00",venue:"Hard Rock Stadium, Miami Gardens"},
+  47:{date:"Jun 26",cet:"02:00",gmt:"01:00",venue:"NRG Stadium, Houston"},
+  48:{date:"Jun 26",cet:"02:00",gmt:"01:00",venue:"Estadio Akron, Zapopan"},
+  49:{date:"Jun 16",cet:"21:00",gmt:"20:00",venue:"MetLife Stadium, East Rutherford"},
+  50:{date:"Jun 17",cet:"00:00",gmt:"23:00",venue:"Gillette Stadium, Foxborough"},
+  51:{date:"Jun 22",cet:"23:00",gmt:"22:00",venue:"Lincoln Financial Field, Philadelphia"},
+  52:{date:"Jun 23",cet:"02:00",gmt:"01:00",venue:"MetLife Stadium, East Rutherford"},
+  53:{date:"Jun 26",cet:"21:00",gmt:"20:00",venue:"Gillette Stadium, Foxborough"},
+  54:{date:"Jun 26",cet:"21:00",gmt:"20:00",venue:"BMO Field, Toronto"},
+  55:{date:"Jun 17",cet:"03:00",gmt:"02:00",venue:"Arrowhead Stadium, Kansas City"},
+  56:{date:"Jun 17",cet:"06:00",gmt:"05:00",venue:"Levi's Stadium, Santa Clara"},
+  57:{date:"Jun 22",cet:"19:00",gmt:"18:00",venue:"AT&T Stadium, Arlington"},
+  58:{date:"Jun 23",cet:"05:00",gmt:"04:00",venue:"Levi's Stadium, Santa Clara"},
+  59:{date:"Jun 28",cet:"04:00",gmt:"03:00",venue:"Arrowhead Stadium, Kansas City"},
+  60:{date:"Jun 28",cet:"04:00",gmt:"03:00",venue:"AT&T Stadium, Arlington"},
+  61:{date:"Jun 17",cet:"19:00",gmt:"18:00",venue:"NRG Stadium, Houston"},
+  62:{date:"Jun 18",cet:"04:00",gmt:"03:00",venue:"Estadio Azteca, Mexico City"},
+  63:{date:"Jun 23",cet:"19:00",gmt:"18:00",venue:"NRG Stadium, Houston"},
+  64:{date:"Jun 24",cet:"04:00",gmt:"03:00",venue:"Estadio Akron, Zapopan"},
+  65:{date:"Jun 28",cet:"01:30",gmt:"00:30",venue:"Hard Rock Stadium, Miami Gardens"},
+  66:{date:"Jun 28",cet:"01:30",gmt:"00:30",venue:"Mercedes-Benz Stadium, Atlanta"},
+  67:{date:"Jun 17",cet:"22:00",gmt:"21:00",venue:"AT&T Stadium, Arlington"},
+  68:{date:"Jun 18",cet:"01:00",gmt:"00:00",venue:"BMO Field, Toronto"},
+  69:{date:"Jun 23",cet:"22:00",gmt:"21:00",venue:"Gillette Stadium, Foxborough"},
+  70:{date:"Jun 24",cet:"01:00",gmt:"00:00",venue:"BMO Field, Toronto"},
+  71:{date:"Jun 27",cet:"23:00",gmt:"22:00",venue:"MetLife Stadium, East Rutherford"},
+  72:{date:"Jun 27",cet:"23:00",gmt:"22:00",venue:"Lincoln Financial Field, Philadelphia"},
+};
+
+const KO_SCHEDULE={
+  73:{date:"Jun 28",cet:"21:00",gmt:"20:00",venue:"SoFi Stadium, Inglewood"},
+  74:{date:"Jun 29",cet:"22:30",gmt:"21:30",venue:"Gillette Stadium, Foxborough"},
+  75:{date:"Jun 30",cet:"03:00",gmt:"02:00",venue:"Estadio BBVA, Monterrey"},
+  76:{date:"Jun 29",cet:"19:00",gmt:"18:00",venue:"NRG Stadium, Houston"},
+  77:{date:"Jun 30",cet:"23:00",gmt:"22:00",venue:"MetLife Stadium, East Rutherford"},
+  78:{date:"Jun 30",cet:"19:00",gmt:"18:00",venue:"AT&T Stadium, Arlington"},
+  79:{date:"Jul 1",cet:"03:00",gmt:"02:00",venue:"Estadio Azteca, Mexico City"},
+  80:{date:"Jul 1",cet:"18:00",gmt:"17:00",venue:"Mercedes-Benz Stadium, Atlanta"},
+  81:{date:"Jul 1",cet:"02:00",gmt:"01:00",venue:"Levi's Stadium, Santa Clara"},
+  82:{date:"Jul 1",cet:"22:00",gmt:"21:00",venue:"Lumen Field, Seattle"},
+  83:{date:"Jul 2",cet:"01:00",gmt:"00:00",venue:"BMO Field, Toronto"},
+  84:{date:"Jul 2",cet:"21:00",gmt:"20:00",venue:"SoFi Stadium, Inglewood"},
+  85:{date:"Jul 3",cet:"05:00",gmt:"04:00",venue:"BC Place, Vancouver"},
+  86:{date:"Jul 3",cet:"00:00",gmt:"23:00",venue:"Hard Rock Stadium, Miami Gardens"},
+  87:{date:"Jul 3",cet:"03:30",gmt:"02:30",venue:"Arrowhead Stadium, Kansas City"},
+  88:{date:"Jul 3",cet:"20:00",gmt:"19:00",venue:"AT&T Stadium, Arlington"},
+  89:{date:"Jul 4",cet:"23:00",gmt:"22:00",venue:"Lincoln Financial Field, Philadelphia"},
+  90:{date:"Jul 4",cet:"19:00",gmt:"18:00",venue:"NRG Stadium, Houston"},
+  91:{date:"Jul 5",cet:"22:00",gmt:"21:00",venue:"MetLife Stadium, East Rutherford"},
+  92:{date:"Jul 6",cet:"02:00",gmt:"01:00",venue:"Estadio Azteca, Mexico City"},
+  93:{date:"Jul 6",cet:"21:00",gmt:"20:00",venue:"AT&T Stadium, Arlington"},
+  94:{date:"Jul 7",cet:"02:00",gmt:"01:00",venue:"Lumen Field, Seattle"},
+  95:{date:"Jul 7",cet:"18:00",gmt:"17:00",venue:"Mercedes-Benz Stadium, Atlanta"},
+  96:{date:"Jul 7",cet:"22:00",gmt:"21:00",venue:"BC Place, Vancouver"},
+  97:{date:"Jul 9",cet:"22:00",gmt:"21:00",venue:"Gillette Stadium, Foxborough"},
+  98:{date:"Jul 10",cet:"21:00",gmt:"20:00",venue:"SoFi Stadium, Inglewood"},
+  99:{date:"Jul 11",cet:"23:00",gmt:"22:00",venue:"Hard Rock Stadium, Miami Gardens"},
+  100:{date:"Jul 11",cet:"03:00",gmt:"02:00",venue:"Arrowhead Stadium, Kansas City"},
+  101:{date:"Jul 14",cet:"21:00",gmt:"20:00",venue:"AT&T Stadium, Arlington"},
+  102:{date:"Jul 15",cet:"21:00",gmt:"20:00",venue:"Mercedes-Benz Stadium, Atlanta"},
+  103:{date:"Jul 18",cet:"23:00",gmt:"22:00",venue:"Hard Rock Stadium, Miami Gardens"},
+  104:{date:"Jul 19",cet:"21:00",gmt:"20:00",venue:"MetLife Stadium, East Rutherford"},
+};
+
+const COUNTRY_ISO = {
+  'Mexico':'mx','South Africa':'za','South Korea':'kr','Czechia':'cz','Czech Republic':'cz',
+  'Canada':'ca','Bosnia and Herzegovina':'ba','Qatar':'qa','Switzerland':'ch',
+  'Brazil':'br','Morocco':'ma','Haiti':'ht','Scotland':'gb-sct',
+  'United States':'us','Paraguay':'py','Australia':'au','Türkiye':'tr','Turkey':'tr','Turkiye':'tr',
+  'Germany':'de','Curacao':'cw','Ivory Coast':'ci','Ecuador':'ec',
+  'Netherlands':'nl','Japan':'jp','Sweden':'se','Tunisia':'tn',
+  'Belgium':'be','Egypt':'eg','Iran':'ir','New Zealand':'nz',
+  'Spain':'es','Cape Verde':'cv','Saudi Arabia':'sa','Uruguay':'uy',
+  'France':'fr','Senegal':'sn','Iraq':'iq','Norway':'no',
+  'Argentina':'ar','Algeria':'dz','Austria':'at','Jordan':'jo',
+  'Portugal':'pt','DR Congo':'cd','Uzbekistan':'uz','Colombia':'co',
+  'England':'gb-eng','Croatia':'hr','Ghana':'gh','Panama':'pa',
+};
+function Flag({name,size=18}){
+  const iso=COUNTRY_ISO[name];
+  if(!iso)return null;
+  return <img src={`https://hatscripts.github.io/circle-flags/flags/${iso}.svg`} width={size} height={size} style={{borderRadius:'50%',flexShrink:0,verticalAlign:'middle',display:'inline-block'}} alt={name}/>;
+}
+
+// Official FIFA 2026 R32 fixed matchups (match numbers 73-88)
+// Source: Wikipedia / FIFA Competition Regulations
+// 3rd place slots are variable - depends on which 8 groups produce best 3rd-place teams
+// We show the cluster of eligible groups for each 3rd-place slot
+const R32_FIXED = [
+  // matchIdx: [home_slot, away_slot]
+  // home_slot / away_slot: { type:'winner'|'runner-up'|'3rd', g?:string, cluster?:string, label:string }
+  [{type:'runner-up',g:'A',label:'Runner-up Group A'},{type:'runner-up',g:'B',label:'Runner-up Group B'}],        // M73
+  [{type:'winner',g:'E',label:'Winner Group E'},{type:'3rd',cluster:'A/B/C/D/F',label:'Best 3rd (A/B/C/D/F)'}],  // M74
+  [{type:'winner',g:'F',label:'Winner Group F'},{type:'runner-up',g:'C',label:'Runner-up Group C'}],              // M75
+  [{type:'winner',g:'C',label:'Winner Group C'},{type:'runner-up',g:'F',label:'Runner-up Group F'}],              // M76
+  [{type:'winner',g:'I',label:'Winner Group I'},{type:'3rd',cluster:'C/D/F/G/H',label:'Best 3rd (C/D/F/G/H)'}],  // M77
+  [{type:'runner-up',g:'E',label:'Runner-up Group E'},{type:'runner-up',g:'I',label:'Runner-up Group I'}],        // M78
+  [{type:'winner',g:'A',label:'Winner Group A'},{type:'3rd',cluster:'C/E/F/H/I',label:'Best 3rd (C/E/F/H/I)'}],  // M79
+  [{type:'winner',g:'L',label:'Winner Group L'},{type:'3rd',cluster:'E/H/I/J/K',label:'Best 3rd (E/H/I/J/K)'}],  // M80
+  [{type:'winner',g:'D',label:'Winner Group D'},{type:'3rd',cluster:'B/E/F/I/J',label:'Best 3rd (B/E/F/I/J)'}],  // M81
+  [{type:'winner',g:'G',label:'Winner Group G'},{type:'3rd',cluster:'A/E/H/I/J',label:'Best 3rd (A/E/H/I/J)'}],  // M82
+  [{type:'runner-up',g:'K',label:'Runner-up Group K'},{type:'runner-up',g:'L',label:'Runner-up Group L'}],        // M83
+  [{type:'winner',g:'H',label:'Winner Group H'},{type:'runner-up',g:'J',label:'Runner-up Group J'}],              // M84
+  [{type:'winner',g:'B',label:'Winner Group B'},{type:'3rd',cluster:'E/F/G/I/J',label:'Best 3rd (E/F/G/I/J)'}],  // M85
+  [{type:'winner',g:'J',label:'Winner Group J'},{type:'runner-up',g:'H',label:'Runner-up Group H'}],              // M86
+  [{type:'winner',g:'K',label:'Winner Group K'},{type:'3rd',cluster:'D/E/I/J/L',label:'Best 3rd (D/E/I/J/L)'}],  // M87
+  [{type:'runner-up',g:'D',label:'Runner-up Group D'},{type:'runner-up',g:'G',label:'Runner-up Group G'}],        // M88
+];
+
+const FIFA_R32_LOOKUP = {
+  "ABCDEFGH": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"E","M80":"H"},
+  "ABCDEFGI": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"E","M80":"I"},
+  "ABCDEFGJ": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"E","M80":"J"},
+  "ABCDEFGK": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"E","M80":"K"},
+  "ABCDEFGL": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"E"},
+  "ABCDEFHI": {"M79":"H","M85":"E","M81":"B","M74":"C","M82":"A","M77":"F","M87":"D","M80":"I"},
+  "ABCDEFHJ": {"M79":"H","M85":"E","M81":"B","M74":"C","M82":"A","M77":"F","M87":"D","M80":"J"},
+  "ABCDEFHK": {"M79":"H","M85":"E","M81":"B","M74":"C","M82":"A","M77":"F","M87":"D","M80":"K"},
+  "ABCDEFHL": {"M79":"H","M85":"E","M81":"B","M74":"C","M82":"A","M77":"F","M87":"D","M80":"L"},
+  "ABCDEFIJ": {"M79":"C","M85":"E","M81":"B","M74":"D","M82":"A","M77":"F","M87":"I","M80":"J"},
+  "ABCDEFIK": {"M79":"C","M85":"E","M81":"B","M74":"D","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ABCDEFIL": {"M79":"C","M85":"E","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ABCDEFJK": {"M79":"C","M85":"E","M81":"B","M74":"D","M82":"A","M77":"F","M87":"J","M80":"K"},
+  "ABCDEFJL": {"M79":"C","M85":"E","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"J"},
+  "ABCDEFKL": {"M79":"C","M85":"E","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ABCDEGHI": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"D","M87":"E","M80":"I"},
+  "ABCDEGHJ": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"D","M87":"E","M80":"J"},
+  "ABCDEGHK": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"D","M87":"E","M80":"K"},
+  "ABCDEGHL": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"D","M87":"L","M80":"E"},
+  "ABCDEGIJ": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"A","M77":"D","M87":"I","M80":"J"},
+  "ABCDEGIK": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"A","M77":"D","M87":"I","M80":"K"},
+  "ABCDEGIL": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"A","M77":"D","M87":"L","M80":"I"},
+  "ABCDEGJK": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"A","M77":"D","M87":"J","M80":"K"},
+  "ABCDEGJL": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"A","M77":"D","M87":"L","M80":"J"},
+  "ABCDEGKL": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ABCDEHIJ": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"A","M77":"D","M87":"E","M80":"I"},
+  "ABCDEHIK": {"M79":"H","M85":"E","M81":"B","M74":"C","M82":"A","M77":"D","M87":"I","M80":"K"},
+  "ABCDEHIL": {"M79":"H","M85":"E","M81":"B","M74":"C","M82":"A","M77":"D","M87":"L","M80":"I"},
+  "ABCDEHJK": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"A","M77":"D","M87":"E","M80":"K"},
+  "ABCDEHJL": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"A","M77":"D","M87":"L","M80":"E"},
+  "ABCDEHKL": {"M79":"H","M85":"E","M81":"B","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ABCDEIJK": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"A","M77":"D","M87":"I","M80":"K"},
+  "ABCDEIJL": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"A","M77":"D","M87":"L","M80":"I"},
+  "ABCDEIKL": {"M79":"E","M85":"I","M81":"B","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ABCDEJKL": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ABCDFGHI": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"F","M87":"D","M80":"I"},
+  "ABCDFGHJ": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"F","M87":"D","M80":"J"},
+  "ABCDFGHK": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"F","M87":"D","M80":"K"},
+  "ABCDFGHL": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"F","M87":"D","M80":"L"},
+  "ABCDFGIJ": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"I","M80":"J"},
+  "ABCDFGIK": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ABCDFGIL": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ABCDFGJK": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"J","M80":"K"},
+  "ABCDFGJL": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"J"},
+  "ABCDFGKL": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ABCDFHIJ": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"A","M77":"F","M87":"D","M80":"I"},
+  "ABCDFHIK": {"M79":"C","M85":"H","M81":"B","M74":"D","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ABCDFHIL": {"M79":"C","M85":"H","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ABCDFHJK": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"A","M77":"F","M87":"D","M80":"K"},
+  "ABCDFHJL": {"M79":"C","M85":"J","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"H"},
+  "ABCDFHKL": {"M79":"C","M85":"H","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ABCDFIJK": {"M79":"C","M85":"J","M81":"B","M74":"D","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ABCDFIJL": {"M79":"C","M85":"J","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ABCDFIKL": {"M79":"C","M85":"I","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ABCDFJKL": {"M79":"C","M85":"J","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ABCDGHIJ": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"D","M87":"I","M80":"J"},
+  "ABCDGHIK": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"D","M87":"I","M80":"K"},
+  "ABCDGHIL": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"D","M87":"L","M80":"I"},
+  "ABCDGHJK": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"D","M87":"J","M80":"K"},
+  "ABCDGHJL": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"D","M87":"L","M80":"J"},
+  "ABCDGHKL": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ABCDGIJK": {"M79":"I","M85":"J","M81":"B","M74":"C","M82":"A","M77":"D","M87":"I","M80":"K"},
+  "ABCDGIJL": {"M79":"I","M85":"J","M81":"B","M74":"C","M82":"A","M77":"D","M87":"L","M80":"I"},
+  "ABCDGIKL": {"M79":"I","M85":"G","M81":"B","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ABCDGJKL": {"M79":"I","M85":"J","M81":"B","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ABCDHIJK": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"A","M77":"D","M87":"I","M80":"K"},
+  "ABCDHIJL": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"A","M77":"D","M87":"L","M80":"I"},
+  "ABCDHIKL": {"M79":"H","M85":"I","M81":"B","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ABCDHJKL": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ABCDIJKL": {"M79":"I","M85":"J","M81":"B","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ABCEFGHI": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"F","M87":"E","M80":"I"},
+  "ABCEFGHJ": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"F","M87":"E","M80":"J"},
+  "ABCEFGHK": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"F","M87":"E","M80":"K"},
+  "ABCEFGHL": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"F","M87":"L","M80":"E"},
+  "ABCEFGIJ": {"M79":"C","M85":"G","M81":"B","M74":"E","M82":"A","M77":"F","M87":"I","M80":"J"},
+  "ABCEFGIK": {"M79":"C","M85":"G","M81":"B","M74":"E","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ABCEFGIL": {"M79":"C","M85":"G","M81":"B","M74":"E","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ABCEFGJK": {"M79":"C","M85":"G","M81":"B","M74":"E","M82":"A","M77":"F","M87":"J","M80":"K"},
+  "ABCEFGJL": {"M79":"C","M85":"G","M81":"B","M74":"E","M82":"A","M77":"F","M87":"L","M80":"J"},
+  "ABCEFGKL": {"M79":"C","M85":"G","M81":"B","M74":"E","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ABCEFHIJ": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"A","M77":"F","M87":"E","M80":"I"},
+  "ABCEFHIK": {"M79":"H","M85":"E","M81":"B","M74":"C","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ABCEFHIL": {"M79":"H","M85":"E","M81":"B","M74":"C","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ABCEFHJK": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"A","M77":"F","M87":"E","M80":"K"},
+  "ABCEFHJL": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"A","M77":"F","M87":"L","M80":"E"},
+  "ABCEFHKL": {"M79":"H","M85":"E","M81":"B","M74":"C","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ABCEFIJK": {"M79":"C","M85":"J","M81":"B","M74":"E","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ABCEFIJL": {"M79":"C","M85":"J","M81":"B","M74":"E","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ABCEFIKL": {"M79":"C","M85":"E","M81":"B","M74":"F","M82":"A","M77":"I","M87":"L","M80":"K"},
+  "ABCEFJKL": {"M79":"C","M85":"J","M81":"B","M74":"E","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ABCEGHIJ": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"A","M77":"G","M87":"E","M80":"I"},
+  "ABCEGHIK": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"A","M77":"H","M87":"I","M80":"K"},
+  "ABCEGHIL": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"A","M77":"H","M87":"L","M80":"I"},
+  "ABCEGHJK": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"A","M77":"G","M87":"E","M80":"K"},
+  "ABCEGHJL": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"A","M77":"G","M87":"L","M80":"E"},
+  "ABCEGHKL": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "ABCEGIJK": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"A","M77":"G","M87":"I","M80":"K"},
+  "ABCEGIJL": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"A","M77":"G","M87":"L","M80":"I"},
+  "ABCEGIKL": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"A","M77":"I","M87":"L","M80":"K"},
+  "ABCEGJKL": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"A","M77":"G","M87":"L","M80":"K"},
+  "ABCEHIJK": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"A","M77":"H","M87":"I","M80":"K"},
+  "ABCEHIJL": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"A","M77":"H","M87":"L","M80":"I"},
+  "ABCEHIKL": {"M79":"E","M85":"I","M81":"B","M74":"C","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "ABCEHJKL": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "ABCEIJKL": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "ABCFGHIJ": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"F","M87":"I","M80":"J"},
+  "ABCFGHIK": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ABCFGHIL": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ABCFGHJK": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"F","M87":"J","M80":"K"},
+  "ABCFGHJL": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"F","M87":"L","M80":"J"},
+  "ABCFGHKL": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ABCFGIJK": {"M79":"I","M85":"G","M81":"B","M74":"C","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ABCFGIJL": {"M79":"I","M85":"G","M81":"B","M74":"C","M82":"A","M77":"F","M87":"L","M80":"J"},
+  "ABCFGIKL": {"M79":"I","M85":"G","M81":"B","M74":"C","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ABCFGJKL": {"M79":"C","M85":"J","M81":"B","M74":"F","M82":"A","M77":"G","M87":"L","M80":"K"},
+  "ABCFHIJK": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ABCFHIJL": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ABCFHIKL": {"M79":"H","M85":"I","M81":"B","M74":"C","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ABCFHJKL": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ABCFIJKL": {"M79":"I","M85":"J","M81":"B","M74":"C","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ABCGHIJK": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"A","M77":"G","M87":"I","M80":"K"},
+  "ABCGHIJL": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"A","M77":"G","M87":"L","M80":"I"},
+  "ABCGHIKL": {"M79":"I","M85":"G","M81":"B","M74":"C","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "ABCGHJKL": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"A","M77":"G","M87":"L","M80":"K"},
+  "ABCGIJKL": {"M79":"I","M85":"J","M81":"B","M74":"C","M82":"A","M77":"G","M87":"L","M80":"K"},
+  "ABCHIJKL": {"M79":"I","M85":"J","M81":"B","M74":"C","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "ABDEFGHI": {"M79":"H","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"E","M80":"I"},
+  "ABDEFGHJ": {"M79":"H","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"E","M80":"J"},
+  "ABDEFGHK": {"M79":"H","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"E","M80":"K"},
+  "ABDEFGHL": {"M79":"H","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"E"},
+  "ABDEFGIJ": {"M79":"E","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"I","M80":"J"},
+  "ABDEFGIK": {"M79":"E","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ABDEFGIL": {"M79":"E","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ABDEFGJK": {"M79":"E","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"J","M80":"K"},
+  "ABDEFGJL": {"M79":"E","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"J"},
+  "ABDEFGKL": {"M79":"E","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ABDEFHIJ": {"M79":"H","M85":"J","M81":"B","M74":"D","M82":"A","M77":"F","M87":"E","M80":"I"},
+  "ABDEFHIK": {"M79":"H","M85":"E","M81":"B","M74":"D","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ABDEFHIL": {"M79":"H","M85":"E","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ABDEFHJK": {"M79":"H","M85":"J","M81":"B","M74":"D","M82":"A","M77":"F","M87":"E","M80":"K"},
+  "ABDEFHJL": {"M79":"H","M85":"J","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"E"},
+  "ABDEFHKL": {"M79":"H","M85":"E","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ABDEFIJK": {"M79":"E","M85":"J","M81":"B","M74":"D","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ABDEFIJL": {"M79":"E","M85":"J","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ABDEFIKL": {"M79":"E","M85":"I","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ABDEFJKL": {"M79":"E","M85":"J","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ABDEGHIJ": {"M79":"H","M85":"J","M81":"B","M74":"D","M82":"A","M77":"G","M87":"E","M80":"I"},
+  "ABDEGHIK": {"M79":"E","M85":"G","M81":"B","M74":"D","M82":"A","M77":"H","M87":"I","M80":"K"},
+  "ABDEGHIL": {"M79":"E","M85":"G","M81":"B","M74":"D","M82":"A","M77":"H","M87":"L","M80":"I"},
+  "ABDEGHJK": {"M79":"H","M85":"J","M81":"B","M74":"D","M82":"A","M77":"G","M87":"E","M80":"K"},
+  "ABDEGHJL": {"M79":"H","M85":"J","M81":"B","M74":"D","M82":"A","M77":"G","M87":"L","M80":"E"},
+  "ABDEGHKL": {"M79":"E","M85":"G","M81":"B","M74":"D","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "ABDEGIJK": {"M79":"E","M85":"J","M81":"B","M74":"D","M82":"A","M77":"G","M87":"I","M80":"K"},
+  "ABDEGIJL": {"M79":"E","M85":"J","M81":"B","M74":"D","M82":"A","M77":"G","M87":"L","M80":"I"},
+  "ABDEGIKL": {"M79":"E","M85":"G","M81":"B","M74":"A","M82":"I","M77":"D","M87":"L","M80":"K"},
+  "ABDEGJKL": {"M79":"E","M85":"J","M81":"B","M74":"D","M82":"A","M77":"G","M87":"L","M80":"K"},
+  "ABDEHIJK": {"M79":"E","M85":"J","M81":"B","M74":"D","M82":"A","M77":"H","M87":"I","M80":"K"},
+  "ABDEHIJL": {"M79":"E","M85":"J","M81":"B","M74":"D","M82":"A","M77":"H","M87":"L","M80":"I"},
+  "ABDEHIKL": {"M79":"E","M85":"I","M81":"B","M74":"D","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "ABDEHJKL": {"M79":"E","M85":"J","M81":"B","M74":"D","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "ABDEIJKL": {"M79":"E","M85":"J","M81":"B","M74":"A","M82":"I","M77":"D","M87":"L","M80":"K"},
+  "ABDFGHIJ": {"M79":"H","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"I","M80":"J"},
+  "ABDFGHIK": {"M79":"H","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ABDFGHIL": {"M79":"H","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ABDFGHJK": {"M79":"H","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"J","M80":"K"},
+  "ABDFGHJL": {"M79":"H","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"J"},
+  "ABDFGHKL": {"M79":"H","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ABDFGIJK": {"M79":"F","M85":"J","M81":"B","M74":"D","M82":"A","M77":"G","M87":"I","M80":"K"},
+  "ABDFGIJL": {"M79":"F","M85":"J","M81":"B","M74":"D","M82":"A","M77":"G","M87":"L","M80":"I"},
+  "ABDFGIKL": {"M79":"I","M85":"G","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ABDFGJKL": {"M79":"F","M85":"J","M81":"B","M74":"D","M82":"A","M77":"G","M87":"L","M80":"K"},
+  "ABDFHIJK": {"M79":"H","M85":"J","M81":"B","M74":"D","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ABDFHIJL": {"M79":"H","M85":"J","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ABDFHIKL": {"M79":"H","M85":"I","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ABDFHJKL": {"M79":"H","M85":"J","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ABDFIJKL": {"M79":"I","M85":"J","M81":"B","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ABDGHIJK": {"M79":"H","M85":"J","M81":"B","M74":"D","M82":"A","M77":"G","M87":"I","M80":"K"},
+  "ABDGHIJL": {"M79":"H","M85":"J","M81":"B","M74":"D","M82":"A","M77":"G","M87":"L","M80":"I"},
+  "ABDGHIKL": {"M79":"I","M85":"G","M81":"B","M74":"D","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "ABDGHJKL": {"M79":"H","M85":"J","M81":"B","M74":"D","M82":"A","M77":"G","M87":"L","M80":"K"},
+  "ABDGIJKL": {"M79":"I","M85":"J","M81":"B","M74":"D","M82":"A","M77":"G","M87":"L","M80":"K"},
+  "ABDHIJKL": {"M79":"I","M85":"J","M81":"B","M74":"D","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "ABEFGHIJ": {"M79":"H","M85":"J","M81":"B","M74":"F","M82":"A","M77":"G","M87":"E","M80":"I"},
+  "ABEFGHIK": {"M79":"E","M85":"G","M81":"B","M74":"F","M82":"A","M77":"H","M87":"I","M80":"K"},
+  "ABEFGHIL": {"M79":"E","M85":"G","M81":"B","M74":"F","M82":"A","M77":"H","M87":"L","M80":"I"},
+  "ABEFGHJK": {"M79":"H","M85":"J","M81":"B","M74":"F","M82":"A","M77":"G","M87":"E","M80":"K"},
+  "ABEFGHJL": {"M79":"H","M85":"J","M81":"B","M74":"F","M82":"A","M77":"G","M87":"L","M80":"E"},
+  "ABEFGHKL": {"M79":"E","M85":"G","M81":"B","M74":"F","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "ABEFGIJK": {"M79":"E","M85":"J","M81":"B","M74":"F","M82":"A","M77":"G","M87":"I","M80":"K"},
+  "ABEFGIJL": {"M79":"E","M85":"J","M81":"B","M74":"F","M82":"A","M77":"G","M87":"L","M80":"I"},
+  "ABEFGIKL": {"M79":"E","M85":"G","M81":"B","M74":"A","M82":"I","M77":"F","M87":"L","M80":"K"},
+  "ABEFGJKL": {"M79":"E","M85":"J","M81":"B","M74":"F","M82":"A","M77":"G","M87":"L","M80":"K"},
+  "ABEFHIJK": {"M79":"E","M85":"J","M81":"B","M74":"F","M82":"A","M77":"H","M87":"I","M80":"K"},
+  "ABEFHIJL": {"M79":"E","M85":"J","M81":"B","M74":"F","M82":"A","M77":"H","M87":"L","M80":"I"},
+  "ABEFHIKL": {"M79":"E","M85":"I","M81":"B","M74":"F","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "ABEFHJKL": {"M79":"E","M85":"J","M81":"B","M74":"F","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "ABEFIJKL": {"M79":"E","M85":"J","M81":"B","M74":"A","M82":"I","M77":"F","M87":"L","M80":"K"},
+  "ABEGHIJK": {"M79":"E","M85":"J","M81":"B","M74":"A","M82":"H","M77":"G","M87":"I","M80":"K"},
+  "ABEGHIJL": {"M79":"E","M85":"J","M81":"B","M74":"A","M82":"H","M77":"G","M87":"L","M80":"I"},
+  "ABEGHIKL": {"M79":"E","M85":"G","M81":"B","M74":"A","M82":"I","M77":"H","M87":"L","M80":"K"},
+  "ABEGHJKL": {"M79":"E","M85":"J","M81":"B","M74":"A","M82":"H","M77":"G","M87":"L","M80":"K"},
+  "ABEGIJKL": {"M79":"E","M85":"J","M81":"B","M74":"A","M82":"I","M77":"G","M87":"L","M80":"K"},
+  "ABEHIJKL": {"M79":"E","M85":"J","M81":"B","M74":"A","M82":"I","M77":"H","M87":"L","M80":"K"},
+  "ABFGHIJK": {"M79":"H","M85":"J","M81":"B","M74":"F","M82":"A","M77":"G","M87":"I","M80":"K"},
+  "ABFGHIJL": {"M79":"H","M85":"J","M81":"B","M74":"F","M82":"A","M77":"G","M87":"L","M80":"I"},
+  "ABFGHIKL": {"M79":"H","M85":"G","M81":"B","M74":"A","M82":"I","M77":"F","M87":"L","M80":"K"},
+  "ABFGHJKL": {"M79":"H","M85":"J","M81":"B","M74":"F","M82":"A","M77":"G","M87":"L","M80":"K"},
+  "ABFGIJKL": {"M79":"I","M85":"J","M81":"B","M74":"F","M82":"A","M77":"G","M87":"L","M80":"K"},
+  "ABFHIJKL": {"M79":"H","M85":"J","M81":"B","M74":"A","M82":"I","M77":"F","M87":"L","M80":"K"},
+  "ABGHIJKL": {"M79":"H","M85":"J","M81":"B","M74":"A","M82":"I","M77":"G","M87":"L","M80":"K"},
+  "ACDEFGHI": {"M79":"H","M85":"G","M81":"E","M74":"C","M82":"A","M77":"F","M87":"D","M80":"I"},
+  "ACDEFGHJ": {"M79":"H","M85":"G","M81":"J","M74":"C","M82":"A","M77":"F","M87":"D","M80":"E"},
+  "ACDEFGHK": {"M79":"H","M85":"G","M81":"E","M74":"C","M82":"A","M77":"F","M87":"D","M80":"K"},
+  "ACDEFGHL": {"M79":"H","M85":"G","M81":"F","M74":"C","M82":"A","M77":"D","M87":"L","M80":"E"},
+  "ACDEFGIJ": {"M79":"C","M85":"G","M81":"J","M74":"D","M82":"A","M77":"F","M87":"E","M80":"I"},
+  "ACDEFGIK": {"M79":"C","M85":"G","M81":"E","M74":"D","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ACDEFGIL": {"M79":"C","M85":"G","M81":"E","M74":"D","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ACDEFGJK": {"M79":"C","M85":"G","M81":"J","M74":"D","M82":"A","M77":"F","M87":"E","M80":"K"},
+  "ACDEFGJL": {"M79":"C","M85":"G","M81":"J","M74":"D","M82":"A","M77":"F","M87":"L","M80":"E"},
+  "ACDEFGKL": {"M79":"C","M85":"G","M81":"E","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ACDEFHIJ": {"M79":"H","M85":"J","M81":"E","M74":"C","M82":"A","M77":"F","M87":"D","M80":"I"},
+  "ACDEFHIK": {"M79":"H","M85":"E","M81":"F","M74":"C","M82":"A","M77":"D","M87":"I","M80":"K"},
+  "ACDEFHIL": {"M79":"H","M85":"E","M81":"F","M74":"C","M82":"A","M77":"D","M87":"L","M80":"I"},
+  "ACDEFHJK": {"M79":"H","M85":"J","M81":"E","M74":"C","M82":"A","M77":"F","M87":"D","M80":"K"},
+  "ACDEFHJL": {"M79":"H","M85":"J","M81":"F","M74":"C","M82":"A","M77":"D","M87":"L","M80":"E"},
+  "ACDEFHKL": {"M79":"H","M85":"E","M81":"F","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ACDEFIJK": {"M79":"C","M85":"J","M81":"E","M74":"D","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ACDEFIJL": {"M79":"C","M85":"J","M81":"E","M74":"D","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ACDEFIKL": {"M79":"C","M85":"E","M81":"I","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ACDEFJKL": {"M79":"C","M85":"J","M81":"E","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ACDEGHIJ": {"M79":"H","M85":"G","M81":"J","M74":"C","M82":"A","M77":"D","M87":"E","M80":"I"},
+  "ACDEGHIK": {"M79":"H","M85":"G","M81":"E","M74":"C","M82":"A","M77":"D","M87":"I","M80":"K"},
+  "ACDEGHIL": {"M79":"H","M85":"G","M81":"E","M74":"C","M82":"A","M77":"D","M87":"L","M80":"I"},
+  "ACDEGHJK": {"M79":"H","M85":"G","M81":"J","M74":"C","M82":"A","M77":"D","M87":"E","M80":"K"},
+  "ACDEGHJL": {"M79":"H","M85":"G","M81":"J","M74":"C","M82":"A","M77":"D","M87":"L","M80":"E"},
+  "ACDEGHKL": {"M79":"H","M85":"G","M81":"E","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ACDEGIJK": {"M79":"E","M85":"G","M81":"J","M74":"C","M82":"A","M77":"D","M87":"I","M80":"K"},
+  "ACDEGIJL": {"M79":"E","M85":"G","M81":"J","M74":"C","M82":"A","M77":"D","M87":"L","M80":"I"},
+  "ACDEGIKL": {"M79":"E","M85":"G","M81":"I","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ACDEGJKL": {"M79":"E","M85":"G","M81":"J","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ACDEHIJK": {"M79":"H","M85":"J","M81":"E","M74":"C","M82":"A","M77":"D","M87":"I","M80":"K"},
+  "ACDEHIJL": {"M79":"H","M85":"J","M81":"E","M74":"C","M82":"A","M77":"D","M87":"L","M80":"I"},
+  "ACDEHIKL": {"M79":"H","M85":"E","M81":"I","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ACDEHJKL": {"M79":"H","M85":"J","M81":"E","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ACDEIJKL": {"M79":"E","M85":"J","M81":"I","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ACDFGHIJ": {"M79":"H","M85":"G","M81":"J","M74":"C","M82":"A","M77":"F","M87":"D","M80":"I"},
+  "ACDFGHIK": {"M79":"H","M85":"G","M81":"F","M74":"C","M82":"A","M77":"D","M87":"I","M80":"K"},
+  "ACDFGHIL": {"M79":"H","M85":"G","M81":"F","M74":"C","M82":"A","M77":"D","M87":"L","M80":"I"},
+  "ACDFGHJK": {"M79":"H","M85":"G","M81":"J","M74":"C","M82":"A","M77":"F","M87":"D","M80":"K"},
+  "ACDFGHJL": {"M79":"C","M85":"G","M81":"J","M74":"D","M82":"A","M77":"F","M87":"L","M80":"H"},
+  "ACDFGHKL": {"M79":"H","M85":"G","M81":"F","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ACDFGIJK": {"M79":"C","M85":"G","M81":"J","M74":"D","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ACDFGIJL": {"M79":"C","M85":"G","M81":"J","M74":"D","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ACDFGIKL": {"M79":"C","M85":"G","M81":"I","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ACDFGJKL": {"M79":"C","M85":"G","M81":"J","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ACDFHIJK": {"M79":"H","M85":"J","M81":"F","M74":"C","M82":"A","M77":"D","M87":"I","M80":"K"},
+  "ACDFHIJL": {"M79":"H","M85":"J","M81":"F","M74":"C","M82":"A","M77":"D","M87":"L","M80":"I"},
+  "ACDFHIKL": {"M79":"H","M85":"F","M81":"I","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ACDFHJKL": {"M79":"H","M85":"J","M81":"F","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ACDFIJKL": {"M79":"C","M85":"J","M81":"I","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ACDGHIJK": {"M79":"H","M85":"G","M81":"J","M74":"C","M82":"A","M77":"D","M87":"I","M80":"K"},
+  "ACDGHIJL": {"M79":"H","M85":"G","M81":"J","M74":"C","M82":"A","M77":"D","M87":"L","M80":"I"},
+  "ACDGHIKL": {"M79":"H","M85":"G","M81":"I","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ACDGHJKL": {"M79":"H","M85":"G","M81":"J","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ACDGIJKL": {"M79":"I","M85":"G","M81":"J","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ACDHIJKL": {"M79":"H","M85":"J","M81":"I","M74":"C","M82":"A","M77":"D","M87":"L","M80":"K"},
+  "ACEFGHIJ": {"M79":"H","M85":"G","M81":"J","M74":"C","M82":"A","M77":"F","M87":"E","M80":"I"},
+  "ACEFGHIK": {"M79":"H","M85":"G","M81":"E","M74":"C","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ACEFGHIL": {"M79":"H","M85":"G","M81":"E","M74":"C","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ACEFGHJK": {"M79":"H","M85":"G","M81":"J","M74":"C","M82":"A","M77":"F","M87":"E","M80":"K"},
+  "ACEFGHJL": {"M79":"H","M85":"G","M81":"J","M74":"C","M82":"A","M77":"F","M87":"L","M80":"E"},
+  "ACEFGHKL": {"M79":"H","M85":"G","M81":"E","M74":"C","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ACEFGIJK": {"M79":"E","M85":"G","M81":"J","M74":"C","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ACEFGIJL": {"M79":"E","M85":"G","M81":"J","M74":"C","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ACEFGIKL": {"M79":"E","M85":"G","M81":"I","M74":"C","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ACEFGJKL": {"M79":"E","M85":"G","M81":"J","M74":"C","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ACEFHIJK": {"M79":"H","M85":"J","M81":"E","M74":"C","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ACEFHIJL": {"M79":"H","M85":"J","M81":"E","M74":"C","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ACEFHIKL": {"M79":"H","M85":"E","M81":"I","M74":"C","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ACEFHJKL": {"M79":"H","M85":"J","M81":"E","M74":"C","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ACEFIJKL": {"M79":"E","M85":"J","M81":"I","M74":"C","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ACEGHIJK": {"M79":"E","M85":"G","M81":"J","M74":"C","M82":"A","M77":"H","M87":"I","M80":"K"},
+  "ACEGHIJL": {"M79":"E","M85":"G","M81":"J","M74":"C","M82":"A","M77":"H","M87":"L","M80":"I"},
+  "ACEGHIKL": {"M79":"E","M85":"G","M81":"I","M74":"C","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "ACEGHJKL": {"M79":"E","M85":"G","M81":"J","M74":"C","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "ACEGIJKL": {"M79":"E","M85":"J","M81":"I","M74":"C","M82":"A","M77":"G","M87":"L","M80":"K"},
+  "ACEHIJKL": {"M79":"E","M85":"J","M81":"I","M74":"C","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "ACFGHIJK": {"M79":"H","M85":"G","M81":"J","M74":"C","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ACFGHIJL": {"M79":"H","M85":"G","M81":"J","M74":"C","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ACFGHIKL": {"M79":"H","M85":"G","M81":"I","M74":"C","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ACFGHJKL": {"M79":"H","M85":"G","M81":"J","M74":"C","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ACFGIJKL": {"M79":"I","M85":"G","M81":"J","M74":"C","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ACFHIJKL": {"M79":"H","M85":"J","M81":"I","M74":"C","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ACGHIJKL": {"M79":"H","M85":"J","M81":"I","M74":"C","M82":"A","M77":"G","M87":"L","M80":"K"},
+  "ADEFGHIJ": {"M79":"H","M85":"G","M81":"J","M74":"D","M82":"A","M77":"F","M87":"E","M80":"I"},
+  "ADEFGHIK": {"M79":"H","M85":"G","M81":"E","M74":"D","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ADEFGHIL": {"M79":"H","M85":"G","M81":"E","M74":"D","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ADEFGHJK": {"M79":"H","M85":"G","M81":"J","M74":"D","M82":"A","M77":"F","M87":"E","M80":"K"},
+  "ADEFGHJL": {"M79":"H","M85":"G","M81":"J","M74":"D","M82":"A","M77":"F","M87":"L","M80":"E"},
+  "ADEFGHKL": {"M79":"H","M85":"G","M81":"E","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ADEFGIJK": {"M79":"E","M85":"G","M81":"J","M74":"D","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ADEFGIJL": {"M79":"E","M85":"G","M81":"J","M74":"D","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ADEFGIKL": {"M79":"E","M85":"G","M81":"I","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ADEFGJKL": {"M79":"E","M85":"G","M81":"J","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ADEFHIJK": {"M79":"H","M85":"J","M81":"E","M74":"D","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ADEFHIJL": {"M79":"H","M85":"J","M81":"E","M74":"D","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ADEFHIKL": {"M79":"H","M85":"E","M81":"I","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ADEFHJKL": {"M79":"H","M85":"J","M81":"E","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ADEFIJKL": {"M79":"E","M85":"J","M81":"I","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ADEGHIJK": {"M79":"E","M85":"G","M81":"J","M74":"D","M82":"A","M77":"H","M87":"I","M80":"K"},
+  "ADEGHIJL": {"M79":"E","M85":"G","M81":"J","M74":"D","M82":"A","M77":"H","M87":"L","M80":"I"},
+  "ADEGHIKL": {"M79":"E","M85":"G","M81":"I","M74":"D","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "ADEGHJKL": {"M79":"E","M85":"G","M81":"J","M74":"D","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "ADEGIJKL": {"M79":"E","M85":"J","M81":"I","M74":"D","M82":"A","M77":"G","M87":"L","M80":"K"},
+  "ADEHIJKL": {"M79":"E","M85":"J","M81":"I","M74":"D","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "ADFGHIJK": {"M79":"H","M85":"G","M81":"J","M74":"D","M82":"A","M77":"F","M87":"I","M80":"K"},
+  "ADFGHIJL": {"M79":"H","M85":"G","M81":"J","M74":"D","M82":"A","M77":"F","M87":"L","M80":"I"},
+  "ADFGHIKL": {"M79":"H","M85":"G","M81":"I","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ADFGHJKL": {"M79":"H","M85":"G","M81":"J","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ADFGIJKL": {"M79":"I","M85":"G","M81":"J","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ADFHIJKL": {"M79":"H","M85":"J","M81":"I","M74":"D","M82":"A","M77":"F","M87":"L","M80":"K"},
+  "ADGHIJKL": {"M79":"H","M85":"J","M81":"I","M74":"D","M82":"A","M77":"G","M87":"L","M80":"K"},
+  "AEFGHIJK": {"M79":"E","M85":"G","M81":"J","M74":"F","M82":"A","M77":"H","M87":"I","M80":"K"},
+  "AEFGHIJL": {"M79":"E","M85":"G","M81":"J","M74":"F","M82":"A","M77":"H","M87":"L","M80":"I"},
+  "AEFGHIKL": {"M79":"E","M85":"G","M81":"I","M74":"F","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "AEFGHJKL": {"M79":"E","M85":"G","M81":"J","M74":"F","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "AEFGIJKL": {"M79":"E","M85":"J","M81":"I","M74":"F","M82":"A","M77":"G","M87":"L","M80":"K"},
+  "AEFHIJKL": {"M79":"E","M85":"J","M81":"I","M74":"F","M82":"A","M77":"H","M87":"L","M80":"K"},
+  "AEGHIJKL": {"M79":"E","M85":"J","M81":"I","M74":"A","M82":"H","M77":"G","M87":"L","M80":"K"},
+  "AFGHIJKL": {"M79":"H","M85":"J","M81":"I","M74":"F","M82":"A","M77":"G","M87":"L","M80":"K"},
+  "BCDEFGHI": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"H","M77":"F","M87":"E","M80":"I"},
+  "BCDEFGHJ": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"J","M77":"F","M87":"D","M80":"E"},
+  "BCDEFGHK": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"H","M77":"F","M87":"E","M80":"K"},
+  "BCDEFGHL": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"H","M77":"F","M87":"L","M80":"E"},
+  "BCDEFGIJ": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"J","M77":"F","M87":"E","M80":"I"},
+  "BCDEFGIK": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"E","M77":"F","M87":"I","M80":"K"},
+  "BCDEFGIL": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"E","M77":"F","M87":"L","M80":"I"},
+  "BCDEFGJK": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"J","M77":"F","M87":"E","M80":"K"},
+  "BCDEFGJL": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"J","M77":"F","M87":"L","M80":"E"},
+  "BCDEFGKL": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"E","M77":"F","M87":"L","M80":"K"},
+  "BCDEFHIJ": {"M79":"C","M85":"J","M81":"B","M74":"D","M82":"H","M77":"F","M87":"E","M80":"I"},
+  "BCDEFHIK": {"M79":"C","M85":"E","M81":"B","M74":"D","M82":"H","M77":"F","M87":"I","M80":"K"},
+  "BCDEFHIL": {"M79":"C","M85":"E","M81":"B","M74":"D","M82":"H","M77":"F","M87":"L","M80":"I"},
+  "BCDEFHJK": {"M79":"C","M85":"J","M81":"B","M74":"D","M82":"H","M77":"F","M87":"E","M80":"K"},
+  "BCDEFHJL": {"M79":"C","M85":"J","M81":"B","M74":"D","M82":"H","M77":"F","M87":"L","M80":"E"},
+  "BCDEFHKL": {"M79":"C","M85":"E","M81":"B","M74":"D","M82":"H","M77":"F","M87":"L","M80":"K"},
+  "BCDEFIJK": {"M79":"C","M85":"J","M81":"B","M74":"D","M82":"E","M77":"F","M87":"I","M80":"K"},
+  "BCDEFIJL": {"M79":"C","M85":"J","M81":"B","M74":"D","M82":"E","M77":"F","M87":"L","M80":"I"},
+  "BCDEFIKL": {"M79":"C","M85":"E","M81":"B","M74":"D","M82":"I","M77":"F","M87":"L","M80":"K"},
+  "BCDEFJKL": {"M79":"C","M85":"J","M81":"B","M74":"D","M82":"E","M77":"F","M87":"L","M80":"K"},
+  "BCDEGHIJ": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"J","M77":"D","M87":"E","M80":"I"},
+  "BCDEGHIK": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"H","M77":"D","M87":"I","M80":"K"},
+  "BCDEGHIL": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"H","M77":"D","M87":"L","M80":"I"},
+  "BCDEGHJK": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"J","M77":"D","M87":"E","M80":"K"},
+  "BCDEGHJL": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"J","M77":"D","M87":"L","M80":"E"},
+  "BCDEGHKL": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"H","M77":"D","M87":"L","M80":"K"},
+  "BCDEGIJK": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"J","M77":"D","M87":"I","M80":"K"},
+  "BCDEGIJL": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"J","M77":"D","M87":"L","M80":"I"},
+  "BCDEGIKL": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"I","M77":"D","M87":"L","M80":"K"},
+  "BCDEGJKL": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"J","M77":"D","M87":"L","M80":"K"},
+  "BCDEHIJK": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"H","M77":"D","M87":"I","M80":"K"},
+  "BCDEHIJL": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"H","M77":"D","M87":"L","M80":"I"},
+  "BCDEHIKL": {"M79":"E","M85":"I","M81":"B","M74":"C","M82":"H","M77":"D","M87":"L","M80":"K"},
+  "BCDEHJKL": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"H","M77":"D","M87":"L","M80":"K"},
+  "BCDEIJKL": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"I","M77":"D","M87":"L","M80":"K"},
+  "BCDFGHIJ": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"J","M77":"F","M87":"D","M80":"I"},
+  "BCDFGHIK": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"H","M77":"F","M87":"I","M80":"K"},
+  "BCDFGHIL": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"H","M77":"F","M87":"L","M80":"I"},
+  "BCDFGHJK": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"J","M77":"F","M87":"D","M80":"K"},
+  "BCDFGHJL": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"H","M77":"F","M87":"L","M80":"J"},
+  "BCDFGHKL": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"H","M77":"F","M87":"L","M80":"K"},
+  "BCDFGIJK": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"J","M77":"F","M87":"I","M80":"K"},
+  "BCDFGIJL": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"J","M77":"F","M87":"L","M80":"I"},
+  "BCDFGIKL": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"I","M77":"F","M87":"L","M80":"K"},
+  "BCDFGJKL": {"M79":"C","M85":"G","M81":"B","M74":"D","M82":"J","M77":"F","M87":"L","M80":"K"},
+  "BCDFHIJK": {"M79":"C","M85":"J","M81":"B","M74":"D","M82":"H","M77":"F","M87":"I","M80":"K"},
+  "BCDFHIJL": {"M79":"C","M85":"J","M81":"B","M74":"D","M82":"H","M77":"F","M87":"L","M80":"I"},
+  "BCDFHIKL": {"M79":"C","M85":"I","M81":"B","M74":"D","M82":"H","M77":"F","M87":"L","M80":"K"},
+  "BCDFHJKL": {"M79":"C","M85":"J","M81":"B","M74":"D","M82":"H","M77":"F","M87":"L","M80":"K"},
+  "BCDFIJKL": {"M79":"C","M85":"J","M81":"B","M74":"D","M82":"I","M77":"F","M87":"L","M80":"K"},
+  "BCDGHIJK": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"J","M77":"D","M87":"I","M80":"K"},
+  "BCDGHIJL": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"J","M77":"D","M87":"L","M80":"I"},
+  "BCDGHIKL": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"I","M77":"D","M87":"L","M80":"K"},
+  "BCDGHJKL": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"J","M77":"D","M87":"L","M80":"K"},
+  "BCDGIJKL": {"M79":"I","M85":"G","M81":"B","M74":"C","M82":"J","M77":"D","M87":"L","M80":"K"},
+  "BCDHIJKL": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"I","M77":"D","M87":"L","M80":"K"},
+  "BCEFGHIJ": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"J","M77":"F","M87":"E","M80":"I"},
+  "BCEFGHIK": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"H","M77":"F","M87":"I","M80":"K"},
+  "BCEFGHIL": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"H","M77":"F","M87":"L","M80":"I"},
+  "BCEFGHJK": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"J","M77":"F","M87":"E","M80":"K"},
+  "BCEFGHJL": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"J","M77":"F","M87":"L","M80":"E"},
+  "BCEFGHKL": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"H","M77":"F","M87":"L","M80":"K"},
+  "BCEFGIJK": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"J","M77":"F","M87":"I","M80":"K"},
+  "BCEFGIJL": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"J","M77":"F","M87":"L","M80":"I"},
+  "BCEFGIKL": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"I","M77":"F","M87":"L","M80":"K"},
+  "BCEFGJKL": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"J","M77":"F","M87":"L","M80":"K"},
+  "BCEFHIJK": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"H","M77":"F","M87":"I","M80":"K"},
+  "BCEFHIJL": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"H","M77":"F","M87":"L","M80":"I"},
+  "BCEFHIKL": {"M79":"E","M85":"I","M81":"B","M74":"C","M82":"H","M77":"F","M87":"L","M80":"K"},
+  "BCEFHJKL": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"H","M77":"F","M87":"L","M80":"K"},
+  "BCEFIJKL": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"I","M77":"F","M87":"L","M80":"K"},
+  "BCEGHIJK": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"H","M77":"G","M87":"I","M80":"K"},
+  "BCEGHIJL": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"H","M77":"G","M87":"L","M80":"I"},
+  "BCEGHIKL": {"M79":"E","M85":"G","M81":"B","M74":"C","M82":"I","M77":"H","M87":"L","M80":"K"},
+  "BCEGHJKL": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"H","M77":"G","M87":"L","M80":"K"},
+  "BCEGIJKL": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"I","M77":"G","M87":"L","M80":"K"},
+  "BCEHIJKL": {"M79":"E","M85":"J","M81":"B","M74":"C","M82":"I","M77":"H","M87":"L","M80":"K"},
+  "BCFGHIJK": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"J","M77":"F","M87":"I","M80":"K"},
+  "BCFGHIJL": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"J","M77":"F","M87":"L","M80":"I"},
+  "BCFGHIKL": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"I","M77":"F","M87":"L","M80":"K"},
+  "BCFGHJKL": {"M79":"H","M85":"G","M81":"B","M74":"C","M82":"J","M77":"F","M87":"L","M80":"K"},
+  "BCFGIJKL": {"M79":"I","M85":"G","M81":"B","M74":"C","M82":"J","M77":"F","M87":"L","M80":"K"},
+  "BCFHIJKL": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"I","M77":"F","M87":"L","M80":"K"},
+  "BCGHIJKL": {"M79":"H","M85":"J","M81":"B","M74":"C","M82":"I","M77":"G","M87":"L","M80":"K"},
+  "BDEFGHIJ": {"M79":"H","M85":"G","M81":"B","M74":"D","M82":"J","M77":"F","M87":"E","M80":"I"},
+  "BDEFGHIK": {"M79":"E","M85":"G","M81":"B","M74":"D","M82":"H","M77":"F","M87":"I","M80":"K"},
+  "BDEFGHIL": {"M79":"E","M85":"G","M81":"B","M74":"D","M82":"H","M77":"F","M87":"L","M80":"I"},
+  "BDEFGHJK": {"M79":"H","M85":"G","M81":"B","M74":"D","M82":"J","M77":"F","M87":"E","M80":"K"},
+  "BDEFGHJL": {"M79":"H","M85":"G","M81":"B","M74":"D","M82":"J","M77":"F","M87":"L","M80":"E"},
+  "BDEFGHKL": {"M79":"E","M85":"G","M81":"B","M74":"D","M82":"H","M77":"F","M87":"L","M80":"K"},
+  "BDEFGIJK": {"M79":"E","M85":"G","M81":"B","M74":"D","M82":"J","M77":"F","M87":"I","M80":"K"},
+  "BDEFGIJL": {"M79":"E","M85":"G","M81":"B","M74":"D","M82":"J","M77":"F","M87":"L","M80":"I"},
+  "BDEFGIKL": {"M79":"E","M85":"G","M81":"B","M74":"D","M82":"I","M77":"F","M87":"L","M80":"K"},
+  "BDEFGJKL": {"M79":"E","M85":"G","M81":"B","M74":"D","M82":"J","M77":"F","M87":"L","M80":"K"},
+  "BDEFHIJK": {"M79":"E","M85":"J","M81":"B","M74":"D","M82":"H","M77":"F","M87":"I","M80":"K"},
+  "BDEFHIJL": {"M79":"E","M85":"J","M81":"B","M74":"D","M82":"H","M77":"F","M87":"L","M80":"I"},
+  "BDEFHIKL": {"M79":"E","M85":"I","M81":"B","M74":"D","M82":"H","M77":"F","M87":"L","M80":"K"},
+  "BDEFHJKL": {"M79":"E","M85":"J","M81":"B","M74":"D","M82":"H","M77":"F","M87":"L","M80":"K"},
+  "BDEFIJKL": {"M79":"E","M85":"J","M81":"B","M74":"D","M82":"I","M77":"F","M87":"L","M80":"K"},
+  "BDEGHIJK": {"M79":"E","M85":"J","M81":"B","M74":"D","M82":"H","M77":"G","M87":"I","M80":"K"},
+  "BDEGHIJL": {"M79":"E","M85":"J","M81":"B","M74":"D","M82":"H","M77":"G","M87":"L","M80":"I"},
+  "BDEGHIKL": {"M79":"E","M85":"G","M81":"B","M74":"D","M82":"I","M77":"H","M87":"L","M80":"K"},
+  "BDEGHJKL": {"M79":"E","M85":"J","M81":"B","M74":"D","M82":"H","M77":"G","M87":"L","M80":"K"},
+  "BDEGIJKL": {"M79":"E","M85":"J","M81":"B","M74":"D","M82":"I","M77":"G","M87":"L","M80":"K"},
+  "BDEHIJKL": {"M79":"E","M85":"J","M81":"B","M74":"D","M82":"I","M77":"H","M87":"L","M80":"K"},
+  "BDFGHIJK": {"M79":"H","M85":"G","M81":"B","M74":"D","M82":"J","M77":"F","M87":"I","M80":"K"},
+  "BDFGHIJL": {"M79":"H","M85":"G","M81":"B","M74":"D","M82":"J","M77":"F","M87":"L","M80":"I"},
+  "BDFGHIKL": {"M79":"H","M85":"G","M81":"B","M74":"D","M82":"I","M77":"F","M87":"L","M80":"K"},
+  "BDFGHJKL": {"M79":"H","M85":"G","M81":"B","M74":"D","M82":"J","M77":"F","M87":"L","M80":"K"},
+  "BDFGIJKL": {"M79":"I","M85":"G","M81":"B","M74":"D","M82":"J","M77":"F","M87":"L","M80":"K"},
+  "BDFHIJKL": {"M79":"H","M85":"J","M81":"B","M74":"D","M82":"I","M77":"F","M87":"L","M80":"K"},
+  "BDGHIJKL": {"M79":"H","M85":"J","M81":"B","M74":"D","M82":"I","M77":"G","M87":"L","M80":"K"},
+  "BEFGHIJK": {"M79":"E","M85":"J","M81":"B","M74":"F","M82":"H","M77":"G","M87":"I","M80":"K"},
+  "BEFGHIJL": {"M79":"E","M85":"J","M81":"B","M74":"F","M82":"H","M77":"G","M87":"L","M80":"I"},
+  "BEFGHIKL": {"M79":"E","M85":"G","M81":"B","M74":"F","M82":"I","M77":"H","M87":"L","M80":"K"},
+  "BEFGHJKL": {"M79":"E","M85":"J","M81":"B","M74":"F","M82":"H","M77":"G","M87":"L","M80":"K"},
+  "BEFGIJKL": {"M79":"E","M85":"J","M81":"B","M74":"F","M82":"I","M77":"G","M87":"L","M80":"K"},
+  "BEFHIJKL": {"M79":"E","M85":"J","M81":"B","M74":"F","M82":"I","M77":"H","M87":"L","M80":"K"},
+  "BEGHIJKL": {"M79":"E","M85":"J","M81":"I","M74":"B","M82":"H","M77":"G","M87":"L","M80":"K"},
+  "BFGHIJKL": {"M79":"H","M85":"J","M81":"B","M74":"F","M82":"I","M77":"G","M87":"L","M80":"K"},
+  "CDEFGHIJ": {"M79":"C","M85":"G","M81":"J","M74":"D","M82":"H","M77":"F","M87":"E","M80":"I"},
+  "CDEFGHIK": {"M79":"C","M85":"G","M81":"E","M74":"D","M82":"H","M77":"F","M87":"I","M80":"K"},
+  "CDEFGHIL": {"M79":"C","M85":"G","M81":"E","M74":"D","M82":"H","M77":"F","M87":"L","M80":"I"},
+  "CDEFGHJK": {"M79":"C","M85":"G","M81":"J","M74":"D","M82":"H","M77":"F","M87":"E","M80":"K"},
+  "CDEFGHJL": {"M79":"C","M85":"G","M81":"J","M74":"D","M82":"H","M77":"F","M87":"L","M80":"E"},
+  "CDEFGHKL": {"M79":"C","M85":"G","M81":"E","M74":"D","M82":"H","M77":"F","M87":"L","M80":"K"},
+  "CDEFGIJK": {"M79":"C","M85":"G","M81":"E","M74":"D","M82":"J","M77":"F","M87":"I","M80":"K"},
+  "CDEFGIJL": {"M79":"C","M85":"G","M81":"E","M74":"D","M82":"J","M77":"F","M87":"L","M80":"I"},
+  "CDEFGIKL": {"M79":"C","M85":"G","M81":"E","M74":"D","M82":"I","M77":"F","M87":"L","M80":"K"},
+  "CDEFGJKL": {"M79":"C","M85":"G","M81":"E","M74":"D","M82":"J","M77":"F","M87":"L","M80":"K"},
+  "CDEFHIJK": {"M79":"C","M85":"J","M81":"E","M74":"D","M82":"H","M77":"F","M87":"I","M80":"K"},
+  "CDEFHIJL": {"M79":"C","M85":"J","M81":"E","M74":"D","M82":"H","M77":"F","M87":"L","M80":"I"},
+  "CDEFHIKL": {"M79":"C","M85":"E","M81":"I","M74":"D","M82":"H","M77":"F","M87":"L","M80":"K"},
+  "CDEFHJKL": {"M79":"C","M85":"J","M81":"E","M74":"D","M82":"H","M77":"F","M87":"L","M80":"K"},
+  "CDEFIJKL": {"M79":"C","M85":"J","M81":"E","M74":"D","M82":"I","M77":"F","M87":"L","M80":"K"},
+  "CDEGHIJK": {"M79":"E","M85":"G","M81":"J","M74":"C","M82":"H","M77":"D","M87":"I","M80":"K"},
+  "CDEGHIJL": {"M79":"E","M85":"G","M81":"J","M74":"C","M82":"H","M77":"D","M87":"L","M80":"I"},
+  "CDEGHIKL": {"M79":"E","M85":"G","M81":"I","M74":"C","M82":"H","M77":"D","M87":"L","M80":"K"},
+  "CDEGHJKL": {"M79":"E","M85":"G","M81":"J","M74":"C","M82":"H","M77":"D","M87":"L","M80":"K"},
+  "CDEGIJKL": {"M79":"E","M85":"G","M81":"I","M74":"C","M82":"J","M77":"D","M87":"L","M80":"K"},
+  "CDEHIJKL": {"M79":"E","M85":"J","M81":"I","M74":"C","M82":"H","M77":"D","M87":"L","M80":"K"},
+  "CDFGHIJK": {"M79":"C","M85":"G","M81":"J","M74":"D","M82":"H","M77":"F","M87":"I","M80":"K"},
+  "CDFGHIJL": {"M79":"C","M85":"G","M81":"J","M74":"D","M82":"H","M77":"F","M87":"L","M80":"I"},
+  "CDFGHIKL": {"M79":"C","M85":"G","M81":"I","M74":"D","M82":"H","M77":"F","M87":"L","M80":"K"},
+  "CDFGHJKL": {"M79":"C","M85":"G","M81":"J","M74":"D","M82":"H","M77":"F","M87":"L","M80":"K"},
+  "CDFGIJKL": {"M79":"C","M85":"G","M81":"I","M74":"D","M82":"J","M77":"F","M87":"L","M80":"K"},
+  "CDFHIJKL": {"M79":"C","M85":"J","M81":"I","M74":"D","M82":"H","M77":"F","M87":"L","M80":"K"},
+  "CDGHIJKL": {"M79":"H","M85":"G","M81":"I","M74":"C","M82":"J","M77":"D","M87":"L","M80":"K"},
+  "CEFGHIJK": {"M79":"E","M85":"G","M81":"J","M74":"C","M82":"H","M77":"F","M87":"I","M80":"K"},
+  "CEFGHIJL": {"M79":"E","M85":"G","M81":"J","M74":"C","M82":"H","M77":"F","M87":"L","M80":"I"},
+  "CEFGHIKL": {"M79":"E","M85":"G","M81":"I","M74":"C","M82":"H","M77":"F","M87":"L","M80":"K"},
+  "CEFGHJKL": {"M79":"E","M85":"G","M81":"J","M74":"C","M82":"H","M77":"F","M87":"L","M80":"K"},
+  "CEFGIJKL": {"M79":"E","M85":"G","M81":"I","M74":"C","M82":"J","M77":"F","M87":"L","M80":"K"},
+  "CEFHIJKL": {"M79":"E","M85":"J","M81":"I","M74":"C","M82":"H","M77":"F","M87":"L","M80":"K"},
+  "CEGHIJKL": {"M79":"E","M85":"J","M81":"I","M74":"C","M82":"H","M77":"G","M87":"L","M80":"K"},
+  "CFGHIJKL": {"M79":"H","M85":"G","M81":"I","M74":"C","M82":"J","M77":"F","M87":"L","M80":"K"},
+  "DEFGHIJK": {"M79":"E","M85":"G","M81":"J","M74":"D","M82":"H","M77":"F","M87":"I","M80":"K"},
+  "DEFGHIJL": {"M79":"E","M85":"G","M81":"J","M74":"D","M82":"H","M77":"F","M87":"L","M80":"I"},
+  "DEFGHIKL": {"M79":"E","M85":"G","M81":"I","M74":"D","M82":"H","M77":"F","M87":"L","M80":"K"},
+  "DEFGHJKL": {"M79":"E","M85":"G","M81":"J","M74":"D","M82":"H","M77":"F","M87":"L","M80":"K"},
+  "DEFGIJKL": {"M79":"E","M85":"G","M81":"I","M74":"D","M82":"J","M77":"F","M87":"L","M80":"K"},
+  "DEFHIJKL": {"M79":"E","M85":"J","M81":"I","M74":"D","M82":"H","M77":"F","M87":"L","M80":"K"},
+  "DEGHIJKL": {"M79":"E","M85":"J","M81":"I","M74":"D","M82":"H","M77":"G","M87":"L","M80":"K"},
+  "DFGHIJKL": {"M79":"H","M85":"G","M81":"I","M74":"D","M82":"J","M77":"F","M87":"L","M80":"K"},
+  "EFGHIJKL": {"M79":"E","M85":"J","M81":"I","M74":"F","M82":"H","M77":"G","M87":"L","M80":"K"},
+};
+
+// Maps R32 match numbers to their slot key in FIFA_R32_LOOKUP
+const R32_THIRD_PLACE_MATCHES = {
+  74: 'M74', 77: 'M77', 79: 'M79', 80: 'M80',
+  81: 'M81', 82: 'M82', 85: 'M85', 87: 'M87'
+};
+
+// New resolveSlot using lookup table
+function resolveSlotFromLookup(matchNum, qualifyingGroups, standings) {
+  const key = [...qualifyingGroups].sort().join('');
+  const scenario = FIFA_R32_LOOKUP[key];
+  if (!scenario) return null;
+  const slotKey = R32_THIRD_PLACE_MATCHES[matchNum];
+  if (!slotKey) return null;
+  const groupLetter = scenario[slotKey];
+  if (!groupLetter) return null;
+  return standings[groupLetter]?.[2]?.id || null;
+}
+
+// Resolve a slot to a team ID given standings
+function resolveSlot(slot, standings, best8thirds) {
+  if (slot.type === 'winner') return standings[slot.g]?.[0]?.id || null;
+  if (slot.type === 'runner-up') return standings[slot.g]?.[1]?.id || null;
+  if (slot.type === '3rd') {
+    // Find the best 3rd place team from the eligible cluster groups
+    // that is in the best8thirds list - pick the highest ranked one
+    const eligible = slot.cluster.split('/');
+    // Find all 3rd place teams from eligible groups that qualified
+    const candidates = best8thirds.filter(t =>
+      eligible.some(g => standings[g]?.[2]?.id === t)
+    );
+    // Return the first one (best8thirds is already sorted by ranking)
+    return candidates[0] || null;
+  }
+  return null;
+}
+
+// Legacy R32_BRACKET kept for scoring engine compatibility
+const R32_BRACKET = R32_FIXED.map(([a,b]) => [
+  {g:a.g||'A', p:a.type==='winner'?1:a.type==='runner-up'?2:3},
+  {g:b.g||'A', p:b.type==='winner'?1:b.type==='runner-up'?2:3},
+]);
+
+function calcStandings(teamIds,matches,scoreMap){
+  const table={};
+  teamIds.forEach(id=>{table[id]={pts:0,gf:0,ga:0,gd:0,played:0};});
+  matches.forEach(m=>{
+    const s=scoreMap[m.id];
+    if(!s||s.home===''||s.away===''||s.home==null||s.away==null)return;
+    const hg=parseInt(s.home),ag=parseInt(s.away),h=m.home_team_id,a=m.away_team_id;
+    if(!table[h]||!table[a])return;
+    table[h].gf+=hg;table[h].ga+=ag;table[h].gd+=hg-ag;table[h].played++;
+    table[a].gf+=ag;table[a].ga+=hg;table[a].gd+=ag-hg;table[a].played++;
+    if(hg>ag)table[h].pts+=3;else if(hg<ag)table[a].pts+=3;else{table[h].pts+=1;table[a].pts+=1;}
+  });
+  return Object.entries(table).sort((a,b)=>b[1].pts-a[1].pts||b[1].gd-a[1].gd||b[1].gf-a[1].gf).map(([id,s])=>({id:parseInt(id),...s}));
+}
+
+function deriveR32Teams(allTeams,groupMatches,predScores){
+  const groupTeams={};
+  allTeams.forEach(t=>{if(!groupTeams[t.group_id])groupTeams[t.group_id]=[];groupTeams[t.group_id].push(t.id);});
+  const standings={};
+  GROUPS.forEach(g=>{standings[g]=calcStandings(groupTeams[g]||[],groupMatches.filter(m=>m.group_id===g),predScores);});
+  const allThirds=GROUPS.map(g=>standings[g][2]).filter(Boolean).sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
+  const best8=allThirds.slice(0,8).map(t=>t.id);
+  const posMap={};
+  GROUPS.forEach(g=>{standings[g].forEach((t,i)=>{posMap[g+'_'+(i+1)]=t.id;});});
+  // Map each group to its 3rd place team (only for groups that produced a best-8 third)
+  const thirdSlots={};
+  GROUPS.forEach(g=>{
+    const third=standings[g]?.[2];
+    if(third&&best8.includes(third.id))thirdSlots[g]=third.id;
+  });
+  return{posMap,thirdSlots,standings,best8thirds:best8};
+}
+
+function getR32Team(slot,posMap,thirdSlots){
+  if(slot.p===3)return thirdSlots[slot.g]||null;
+  return posMap[slot.g+'_'+slot.p]||null;
+}
+
+async function recalcAllScores(){
+  const [{data:allMatches},{data:allTeams},{data:allPredictions},{data:allKoPreds},{data:allSpecials},{data:allProfiles},{data:allAwards}]=await Promise.all([
+    sb.from('matches').select('*').order('match_number'),
+    sb.from('teams').select('*'),
+    sb.from('predictions').select('*'),
+    sb.from('knockout_predictions').select('*'),
+    sb.from('special_predictions').select('*'),
+    sb.from('profiles').select('id'),
+    sb.from('special_awards').select('*'),
+  ]);
+  const groupMatches=allMatches.filter(m=>m.stage==='group');
+  const knockoutMatches=allMatches.filter(m=>m.stage!=='group');
+  const actualGroupScores={};
+  groupMatches.forEach(m=>{if(m.actual_home_goals!=null&&m.actual_away_goals!=null)actualGroupScores[m.id]={home:m.actual_home_goals,away:m.actual_away_goals};});
+  const actualKoTeams={};
+  knockoutMatches.forEach(m=>{if(!actualKoTeams[m.stage])actualKoTeams[m.stage]=new Set();if(m.actual_home_team_id)actualKoTeams[m.stage].add(m.actual_home_team_id);if(m.actual_away_team_id)actualKoTeams[m.stage].add(m.actual_away_team_id);});
+  // Derive R16/QF/SF/Final entrants from actual match winners game by game
+  // (teams advance as soon as their R32/R16/etc match result is entered)
+  const stages_order=['r32','r16','qf','sf','final'];
+  stages_order.forEach((stage,si)=>{
+    if(si===0)return; // R32 handled separately
+    if((actualKoTeams[stage]||new Set()).size>0)return; // already have manual assignments
+    const prevStage=stages_order[si-1];
+    const prevMatches=knockoutMatches.filter(m=>m.stage===prevStage);
+    const derived=new Set();
+    prevMatches.forEach(m=>{
+      if(m.actual_home_goals!=null&&m.actual_away_goals!=null&&m.actual_home_team_id&&m.actual_away_team_id){
+        const winner=m.actual_home_goals>=m.actual_away_goals?m.actual_home_team_id:m.actual_away_team_id;
+        derived.add(winner);
+      }
+    });
+    if(derived.size>0){actualKoTeams[stage]=derived;console.log(`Derived ${stage}: ${derived.size} teams`);}
+  });
+  console.log('actualKoTeams r16 size:', (actualKoTeams['r16']||new Set()).size);
+  const scoreUpdates=[];
+  for(const profile of allProfiles){
+    const uid=profile.id;
+    const userGroupPreds=allPredictions.filter(p=>p.user_id===uid);
+    const userPredMap={};
+    userGroupPreds.forEach(p=>{userPredMap[p.match_id]={home:p.predicted_home_goals,away:p.predicted_away_goals};});
+    let groupPts=0;
+    userGroupPreds.forEach(pred=>{
+      const actual=actualGroupScores[pred.match_id];if(!actual)return;
+      if(pred.predicted_home_goals===actual.home&&pred.predicted_away_goals===actual.away){groupPts+=3;return;}
+      const pr=pred.predicted_home_goals>pred.predicted_away_goals?'H':pred.predicted_home_goals<pred.predicted_away_goals?'A':'D';
+      const ar=actual.home>actual.away?'H':actual.home<actual.away?'A':'D';
+      if(pr===ar)groupPts+=1;
+    });
+    let knockoutPts=0;
+    const userKoMap={};
+    allKoPreds.filter(p=>p.user_id===uid).forEach(p=>{userKoMap[p.match_id]=p.predicted_winner_id;});
+    const{posMap,thirdSlots}=deriveR32Teams(allTeams,groupMatches,userPredMap);
+    // R32: derive actual teams from group results automatically
+    const allGroupResultsIn = groupMatches.every(m =>
+      m.actual_home_goals != null && m.actual_away_goals != null
+    );
+    if(allGroupResultsIn) {
+      const R32_IDX_MNUM_SCORING={1:74,4:77,6:79,7:80,8:81,9:82,12:85,14:87};
+      // Actual R32 teams from real group results
+      const actualGroupScoresMap = {};
+      groupMatches.forEach(m=>{actualGroupScoresMap[m.id]={home:m.actual_home_goals,away:m.actual_away_goals};});
+      const {standings:actualSt} = deriveR32Teams(allTeams,groupMatches,actualGroupScoresMap);
+      const best8actual = GROUPS.map(g=>actualSt[g]?.[2]).filter(Boolean)
+        .sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf).slice(0,8).map(t=>t.id);
+      const qualActual = GROUPS.filter(g=>actualSt[g]?.[2]&&best8actual.includes(actualSt[g][2].id));
+      const actualR32Teams = new Set();
+      R32_FIXED.forEach(([slotA,slotB],idx)=>{
+        const mn=R32_IDX_MNUM_SCORING[idx];
+        const tA=slotA.type==='3rd'?(mn?resolveSlotFromLookup(mn,qualActual,actualSt):null):resolveSlot(slotA,actualSt,best8actual);
+        const tB=slotB.type==='3rd'?(mn?resolveSlotFromLookup(mn,qualActual,actualSt):null):resolveSlot(slotB,actualSt,best8actual);
+        if(tA)actualR32Teams.add(tA);
+        if(tB)actualR32Teams.add(tB);
+      });
+      // User's predicted R32 teams from their group predictions
+      const {standings:userSt} = deriveR32Teams(allTeams,groupMatches,userPredMap);
+      const best8user = GROUPS.map(g=>userSt[g]?.[2]).filter(Boolean)
+        .sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf).slice(0,8).map(t=>t.id);
+      const qualUser = GROUPS.filter(g=>userSt[g]?.[2]&&best8user.includes(userSt[g][2].id));
+      let r32pts=0;
+      R32_FIXED.forEach(([slotA,slotB],idx)=>{
+        const mn=R32_IDX_MNUM_SCORING[idx];
+        const tA=slotA.type==='3rd'?(mn?resolveSlotFromLookup(mn,qualUser,userSt):null):resolveSlot(slotA,userSt,best8user);
+        const tB=slotB.type==='3rd'?(mn?resolveSlotFromLookup(mn,qualUser,userSt):null):resolveSlot(slotB,userSt,best8user);
+        if(tA&&actualR32Teams.has(tA)){knockoutPts+=STAGE_PTS['r32'];r32pts++;}
+        if(tB&&actualR32Teams.has(tB)){knockoutPts+=STAGE_PTS['r32'];r32pts++;}
+      });
+      console.log(`R32 scoring for ${uid}: actualR32Teams=${actualR32Teams.size}, r32pts=${r32pts}, qualActual=${qualActual.join(',')}, qualUser=${qualUser.join(',')}`);
+    }
+    // R16+: award pts for each team user predicted to reach that stage that actually did
+    // R16 entrants = winners of R32 matches (who user picked to win each R32 match)
+    // QF entrants = winners of R16, etc.
+    // Build user's predicted bracket progression
+    if(allGroupResultsIn){
+      const r32Ms=knockoutMatches.filter(m=>m.stage==='r32');
+      const r16Ms=knockoutMatches.filter(m=>m.stage==='r16');
+      const qfMs=knockoutMatches.filter(m=>m.stage==='qf');
+      const sfMs=knockoutMatches.filter(m=>m.stage==='sf');
+      const finMs=knockoutMatches.filter(m=>m.stage==='final');
+      const gw=(mid,h,a)=>{const p=userKoMap[mid];return p===h?h:p===a?a:null;};
+      // Get user's R32 team pairs (derived from group predictions)
+      const {standings:uSt}=deriveR32Teams(allTeams,groupMatches,userPredMap);
+      const b8u=GROUPS.map(g=>uSt[g]?.[2]).filter(Boolean).sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf).slice(0,8).map(t=>t.id);
+      const qGu=GROUPS.filter(g=>uSt[g]?.[2]&&b8u.includes(uSt[g][2].id));
+      const IDX_MN={1:74,4:77,6:79,7:80,8:81,9:82,12:85,14:87};
+      const ur32=R32_FIXED.map(([sA,sB],i)=>{
+        const mn=IDX_MN[i];
+        const h=sA.type==='3rd'?(mn?resolveSlotFromLookup(mn,qGu,uSt):null):resolveSlot(sA,uSt,b8u);
+        const a=sB.type==='3rd'?(mn?resolveSlotFromLookup(mn,qGu,uSt):null):resolveSlot(sB,uSt,b8u);
+        return{matchId:r32Ms[i]?.id,home:h,away:a};
+      });
+      const ur16=r16Ms.map((m,i)=>{const a=ur32[i*2],b=ur32[i*2+1];return{matchId:m.id,home:a?gw(a.matchId,a.home,a.away):null,away:b?gw(b.matchId,b.home,b.away):null};});
+      const uqf=qfMs.map((m,i)=>{const a=ur16[i*2],b=ur16[i*2+1];return{matchId:m.id,home:a?gw(a.matchId,a.home,a.away):null,away:b?gw(b.matchId,b.home,b.away):null};});
+      const usf=sfMs.map((m,i)=>{const a=uqf[i*2],b=uqf[i*2+1];return{matchId:m.id,home:a?gw(a.matchId,a.home,a.away):null,away:b?gw(b.matchId,b.home,b.away):null};});
+      const ufin=finMs.map((m,i)=>{const a=usf[i*2],b=usf[i*2+1];return{matchId:m.id,home:a?gw(a.matchId,a.home,a.away):null,away:b?gw(b.matchId,b.home,b.away):null};});
+      // For each stage, get user's predicted teams entering that stage
+      const userTeamsForStage={
+        r16:new Set([...ur16.flatMap(m=>[m.home,m.away]).filter(Boolean)]),
+        qf:new Set([...uqf.flatMap(m=>[m.home,m.away]).filter(Boolean)]),
+        sf:new Set([...usf.flatMap(m=>[m.home,m.away]).filter(Boolean)]),
+        final:new Set([...ufin.flatMap(m=>[m.home,m.away]).filter(Boolean)]),
+      };
+      ['r16','qf','sf','final'].forEach(stage=>{
+        const actual=actualKoTeams[stage]||new Set();if(actual.size===0)return;
+        const pts=STAGE_PTS[stage];
+        userTeamsForStage[stage].forEach(t=>{if(actual.has(t))knockoutPts+=pts;});
+      });
+    }
+    let specialPts=0;
+    const specials=allSpecials.find(s=>s.user_id===uid);
+    if(specials){
+      const finalMatch=allMatches.find(m=>m.stage==='final');
+      if(finalMatch&&finalMatch.actual_home_goals!=null&&finalMatch.actual_home_team_id&&finalMatch.actual_away_team_id){
+        const winner=finalMatch.actual_home_goals>finalMatch.actual_away_goals?finalMatch.actual_home_team_id:finalMatch.actual_away_team_id;
+        if(specials.champion_team_id===winner)specialPts+=10;
+      }
+      // Total goals is a tiebreaker only - no points awarded
+      const topScorerAward=(allAwards||[]).find(a=>a.user_id===uid&&a.category==='top_scorer'&&a.awarded);
+      if(topScorerAward)specialPts+=10;
+      const topAssistAward=(allAwards||[]).find(a=>a.user_id===uid&&a.category==='top_assister'&&a.awarded);
+      if(topAssistAward)specialPts+=10;
+    }
+    scoreUpdates.push({user_id:uid,group_stage_points:groupPts,knockout_points:knockoutPts,special_points:specialPts,total_points:groupPts+knockoutPts+specialPts,last_updated:new Date().toISOString()});
+  }
+  await sb.from('scores').upsert(scoreUpdates,{onConflict:'user_id'});
+  return scoreUpdates.length;
+}
+function App(){
+  const[session,setSession]=useState(null);
+  const[loading,setLoading]=useState(true);
+  const[page,setPage]=useState('instructions');
+  const[profile,setProfile]=useState(null);
+  useEffect(()=>{
+    sb.auth.getSession().then(({data:{session}})=>{setSession(session);setLoading(false);});
+    const{data:{subscription}}=sb.auth.onAuthStateChange((_e,s)=>setSession(s));
+    return()=>subscription.unsubscribe();
+  },[]);
+  useEffect(()=>{
+    if(session)sb.from('profiles').select('*').eq('id',session.user.id).single().then(({data})=>setProfile(data));
+    else setProfile(null);
+  },[session]);
+  if(loading)return <div className="loading">Loading...</div>;
+  if(!session)return <AuthPage/>;
+  return(
+    <div className="app">
+      <nav className="nav">
+        <span className="nav-logo">WC 2026</span>
+        <div className="nav-links">
+          <button className={`nav-link${page==='instructions'?' active':''}`} onClick={()=>setPage('instructions')}>Instructions</button>
+          <button className={`nav-link${page==='predict'?' active':''}`} onClick={()=>setPage('predict')}>Predictions</button>
+          <button className={`nav-link${page==='leaderboard'?' active':''}`} onClick={()=>setPage('leaderboard')}>Scores & Leaderboard</button>
+          {profile?.is_admin&&<button className={`nav-link${page==='admin'?' active':''}`} onClick={()=>setPage('admin')}>Admin</button>}
+        </div>
+        <div className="nav-right">
+          <span className="nav-user">{profile?.display_name||session.user.email}</span>
+          <button className="nav-signout" onClick={()=>sb.auth.signOut()}>Sign out</button>
+        </div>
+      </nav>
+      <div className="main">
+        {page==='instructions'&&<InstructionsPage profile={profile} setPage={setPage}/>}
+        {page==='predict'&&<PredictPage session={session} profile={profile}/>}
+        {page==='leaderboard'&&<LeaderboardScoresPage session={session} profile={profile}/>}
+        {page==='admin'&&profile?.is_admin&&<AdminPage/>}
+      </div>
+    </div>
+  );
+}
+
+function AuthPage(){
+  const[tab,setTab]=useState('login');
+  const[email,setEmail]=useState('');
+  const[password,setPassword]=useState('');
+  const[name,setName]=useState('');
+  const[error,setError]=useState('');
+  const[success,setSuccess]=useState('');
+  const[loading,setLoading]=useState(false);
+  const handleLogin=async(e)=>{
+    e.preventDefault();setError('');setLoading(true);
+    const{error}=await sb.auth.signInWithPassword({email,password});
+    if(error)setError(error.message);
+    setLoading(false);
+  };
+  const handleSignup=async(e)=>{
+    e.preventDefault();setError('');setLoading(true);
+    if(!name.trim()){setError('Display name is required');setLoading(false);return;}
+    const{data,error}=await sb.auth.signUp({email,password});
+    if(error){setError(error.message);setLoading(false);return;}
+    if(data.user){
+      const{error:pe}=await sb.from('profiles').insert({id:data.user.id,email,display_name:name.trim(),is_admin:false});
+      if(pe){setError('Profile error: '+pe.message);setLoading(false);return;}
+      await sb.from('scores').insert({user_id:data.user.id,total_points:0,group_stage_points:0,knockout_points:0,special_points:0});
+    }
+    setSuccess('Account created! Signing you in...');setLoading(false);
+  };
+  return(
+    <div className="auth-wrap">
+      <div className="auth-card">
+        <div className="auth-logo">
+          <h1>World Cup 2026<br/><em>Predictor</em></h1>
+          <p>USA · Canada · Mexico · June 11 — July 19</p>
+        </div>
+        <div className="auth-tabs">
+          <button className={`auth-tab${tab==='login'?' active':''}`} onClick={()=>{setTab('login');setError('');setSuccess('');}}>Sign in</button>
+          <button className={`auth-tab${tab==='signup'?' active':''}`} onClick={()=>{setTab('signup');setError('');setSuccess('');}}>Create account</button>
+        </div>
+        {error&&<div className="error-msg">{error}</div>}
+        {success&&<div className="success-msg">{success}</div>}
+        {tab==='login'?(
+          <form onSubmit={handleLogin}>
+            <div className="field"><label>Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} required/></div>
+            <div className="field"><label>Password</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} required/></div>
+            <button className="btn" type="submit" disabled={loading}>{loading?'Signing in...':'Sign in'}</button>
+          </form>
+        ):(
+          <form onSubmit={handleSignup}>
+            <div className="field"><label>Display name</label><input type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="As shown on the leaderboard" required/></div>
+            <div className="field"><label>Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} required/></div>
+            <div className="field"><label>Password</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} minLength={6} required/></div>
+            <button className="btn" type="submit" disabled={loading}>{loading?'Creating...':'Create account'}</button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+function Countdown(){
+  const DEADLINE_MS=new Date('2026-06-10T21:59:00Z').getTime();
+  const[timeLeft,setTimeLeft]=useState(null);
+  const[expired,setExpired]=useState(false);
+  useEffect(()=>{
+    const calc=()=>{
+      const diff=DEADLINE_MS-Date.now();
+      if(diff<=0){setExpired(true);setTimeLeft(null);return;}
+      setTimeLeft({d:Math.floor(diff/86400000),h:Math.floor((diff%86400000)/3600000),m:Math.floor((diff%3600000)/60000),s:Math.floor((diff%60000)/1000)});
+    };
+    calc();
+    const id=setInterval(calc,1000);
+    return()=>clearInterval(id);
+  },[]);
+  if(expired)return(
+    <div style={{background:'#fef9ec',border:'1px solid #f0dfa0',borderRadius:'var(--rl)',padding:'1.25rem 2rem',marginBottom:'2rem',display:'flex',alignItems:'center',gap:12}}>
+      <div style={{fontFamily:'var(--font-serif)',fontSize:'1.2rem',fontWeight:500,color:'#7a6200'}}>Predictions Locked</div>
+      <div style={{fontSize:11,fontWeight:600,textTransform:'uppercase',letterSpacing:'1.2px',color:'#b89a00'}}>The deadline has passed</div>
+    </div>
+  );
+  if(!timeLeft)return null;
+  return(
+    <div style={{display:'flex',gap:1,background:'var(--border)',border:'1px solid var(--border)',borderRadius:'var(--rl)',overflow:'hidden',marginBottom:'2rem',width:'fit-content'}}>
+      {[{v:timeLeft.d,l:'Days'},{v:timeLeft.h,l:'Hours'},{v:timeLeft.m,l:'Minutes'},{v:timeLeft.s,l:'Seconds'}].map(({v,l})=>(
+        <div key={l} style={{background:'var(--white)',padding:'1rem 1.5rem',textAlign:'center',minWidth:90}}>
+          <div style={{fontFamily:'var(--font-serif)',fontSize:'2rem',fontWeight:400,color:'var(--ink)',lineHeight:1}}>{String(v).padStart(2,'0')}</div>
+          <div style={{fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'1px',color:'var(--ink4)',marginTop:4}}>{l}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
+function PrizeBox(){
+  return(
+    <div className="info-box" style={{marginBottom:'2rem'}}>
+      <p style={{color:'var(--ink2)',fontSize:14,lineHeight:1.8,fontWeight:700,color:'var(--ink)'}}>Taking part is free. There will be a prize (of limited monetary value but of great prestige) awarded to the champion!</p>
+    </div>
+  );
+}
+
+function InstructionsPage({profile,setPage}){
+  const[scores,setScores]=useState(null);
+  const[rank,setRank]=useState(null);
+  const[predCount,setPredCount]=useState(null);
+  const locked=isLocked();
+  useEffect(()=>{
+    if(!profile)return;
+    sb.from('scores').select('*').eq('user_id',profile.id).single().then(({data})=>setScores(data));
+    sb.from('scores').select('user_id').order('total_points',{ascending:false}).then(({data})=>{
+      if(data){const idx=data.findIndex(r=>r.user_id===profile.id);setRank(idx>=0?idx+1:null);}
+    });
+    sb.from('predictions').select('id',{count:'exact',head:true}).eq('user_id',profile.id).then(({count})=>setPredCount(count));
+  },[profile]);
+  return(
+    <div>
+      <div className="page-header">
+        <h1 className="page-title">Instructions</h1>
+        <p className="page-sub">How the 2026 World Cup Predictor works</p>
+      </div>
+      {locked&&<div className="lock-banner">Predictions are now locked — the tournament has started.</div>}
+
+      <div className="section-label" style={{marginBottom:'1rem'}}>Deadline Countdown</div>
+      <Countdown/>
+      {!locked&&(
+        <div className="cta-strip">
+          <div><h3>Submit your predictions</h3><p>Deadline: June 10, 2026 at 23:59 Stockholm time</p></div>
+          <button className="btn" onClick={()=>setPage('predict')}>Go to Predictions</button>
+        </div>
+      )}
+      <div className="section-label" style={{marginBottom:'1rem'}}>How to play</div>
+      <div className="info-box">
+        <p>Predict the exact score of all 72 group stage matches before the tournament begins. Your predicted group standings will automatically generate your Round of 32 bracket. From there, pick the winner of each knockout match round by round — your picks cascade through to the Final.</p>
+        <p style={{marginTop:'.75rem'}}>You also make five extra predictions: the tournament's top scorer, the tournament's top assister, total goals scored throughout the tournament, number of penalty shootouts in the knockout stage, and your world champion — which is automatically set to whoever you pick to win the Final.</p>
+        <p style={{marginTop:'.75rem'}}>All predictions are locked on <strong>June 10, 2026 at 23:59 Stockholm time</strong>.</p>
+      </div>
+      <div className="section-label" style={{margin:'1.5rem 0 1rem'}}>Rules & Scoring</div>
+      <div className="info-box" style={{marginBottom:'1.5rem'}}>
+        <p><strong>Group stage.</strong> Predicting the correct result (win, draw, or loss) earns 1 point. Predicting the exact score earns 3 points.</p>
+        <p style={{marginTop:'.75rem'}}><strong>Knockout stage.</strong> Points are awarded per team reaching each round, regardless of whether they qualified as 1st, 2nd, or best 3rd place seed. Round of 32: 1 pt · Round of 16: 2 pts · Quarter Finals: 4 pts · Semi Finals: 6 pts · Final: 8 pts per team advancing.</p>
+        <p style={{marginTop:'.75rem'}}><strong>Extra predictions.</strong> World Champion, Top Scorer, Top Assister and Penalty Shootouts each earn 10 points if correct. Total Goals acts as a tie-breaker in case two (or more) players have the same amount of points.</p>
+        <p style={{marginTop:'.75rem'}}><strong>Penalty shootouts.</strong> In the knockout stage, if a game is tied after extra time and decided by a penalty shootout, the winning team is awarded one goal. For example, a game tied 1–1 that goes to penalties becomes 2–1 to whichever team wins the shootout. Individual penalties during the shootout do not count towards the total goals prediction.</p>
+      </div>
+      <div className="section-label" style={{marginBottom:'1rem'}}>Prizes</div>
+      <PrizeBox/>
+    </div>
+  );
+}
+
+function PredictPage({session,profile}){
+  const[tab,setTab]=useState('group');
+  const[groupScores,setGroupScores]=useState({});
+  const locked=isLocked()&&!profile?.is_admin;
+  return(
+    <div>
+      <div className="page-header">
+        <h1 className="page-title">Predictions</h1>
+        <p className="page-sub">Deadline: June 10, 2026 at 23:59 Stockholm time</p>
+      </div>
+      {locked&&<div className="lock-banner">Predictions are locked. You can still view your submissions below.</div>}
+      <div className="pred-nav">
+        <button className={`pred-nav-btn${tab==='group'?' active':''}`} onClick={()=>setTab('group')}>Group Stage</button>
+        <button className={`pred-nav-btn${tab==='knockout'?' active':''}`} onClick={()=>setTab('knockout')}>Knockout Stage</button>
+        <button className={`pred-nav-btn${tab==='special'?' active':''}`} onClick={()=>setTab('special')}>Extra Predictions</button>
+      </div>
+      <div style={{display:tab==='group'?'block':'none'}}><GroupPredictions session={session} locked={locked} onScoresChange={setGroupScores}/></div>
+      <div style={{display:tab==='knockout'?'block':'none'}}><KnockoutPredictions session={session} locked={locked}/></div>
+      <div style={{display:tab==='special'?'block':'none'}}><SpecialPredictions session={session} locked={locked} groupScores={groupScores}/></div>
+    </div>
+  );
+}
+
+function GroupStandingsPanel({teamMap,groupId,groupTeamIds,groupMatches,scoreMap}){
+  const standings=useMemo(()=>calcStandings(groupTeamIds,groupMatches,scoreMap),[groupTeamIds,groupMatches,scoreMap]);
+  const anyPredicted=groupMatches.some(m=>scoreMap[m.id]?.home!=null&&scoreMap[m.id]?.away!=null);
+  if(!anyPredicted)return(
+    <div className="group-standings-panel">
+      <div className="standings-header">Group Standings</div>
+      <div style={{padding:'12px',fontSize:12,color:'var(--ink4)'}}>Fill in scores to see group standings</div>
+    </div>
+  );
+  return(
+    <div className="group-standings-panel">
+      <div className="standings-header">Group Standings</div>
+      {standings.map((row,i)=>{
+        const team=teamMap[row.id];
+        const qual=i<2;
+        return(
+          <div key={row.id} className="standings-row">
+            <span className={`standings-pos${qual?' qual':''}`}>{i+1}</span>
+            <span className="standings-flag"><Flag name={team?.name} size={14}/></span>
+            <span className="standings-name">{team?.name||'?'}</span>
+            <span className="standings-gd">{row.played>0?(row.gd>=0?'+':'')+row.gd:''}</span>
+            <span className="standings-pts">{row.pts}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function GroupPredictions({session,locked,onScoresChange}){
+  const[matches,setMatches]=useState([]);
+  const[teams,setTeams]=useState({});
+  const[scores,setScores]=useState({});
+  const[loading,setLoading]=useState(true);
+  const[saving,setSaving]=useState(false);
+  const[saved,setSaved]=useState(false);
+  useEffect(()=>{
+    Promise.all([
+      sb.from('matches').select('*').eq('stage','group').order('match_number'),
+      sb.from('teams').select('*'),
+      sb.from('predictions').select('*').eq('user_id',session.user.id),
+    ]).then(([{data:m},{data:t},{data:p}])=>{
+      setMatches(m||[]);
+      const tMap={};(t||[]).forEach(team=>tMap[team.id]=team);setTeams(tMap);
+      const sMap={};(p||[]).forEach(pred=>{sMap[pred.match_id]={home:pred.predicted_home_goals??'',away:pred.predicted_away_goals??''};});
+      setScores(sMap);if(onScoresChange)onScoresChange(sMap);setLoading(false);
+    });
+  },[session]);
+  const update=(matchId,side,val)=>{
+    if(locked)return;
+    const v=val===''?'':Math.max(0,parseInt(val)||0);
+    setScores(s=>{const next={...s,[matchId]:{...s[matchId],[side]:v}};if(onScoresChange)onScoresChange(next);return next;});
+  };
+  const save=async()=>{
+    setSaving(true);
+    const upserts=matches.filter(m=>scores[m.id]?.home!==''&&scores[m.id]?.away!==''&&scores[m.id]?.home!=null&&scores[m.id]?.away!=null)
+      .map(m=>({user_id:session.user.id,match_id:m.id,predicted_home_goals:scores[m.id].home,predicted_away_goals:scores[m.id].away}));
+    await sb.from('predictions').upsert(upserts,{onConflict:'user_id,match_id'});
+    setSaved(true);setTimeout(()=>setSaved(false),3000);setSaving(false);
+  };
+  const clearAll=async()=>{
+    if(!window.confirm('Clear all 72 group stage predictions? This cannot be undone.'))return;
+    // Delete each prediction individually to avoid RLS issues
+    const ids=matches.map(m=>m.id);
+    const{error}=await sb.from('predictions').delete().eq('user_id',session.user.id).in('match_id',ids);
+    console.log('Clear group result:',error);
+    // Reset local state regardless
+    const empty={};
+    matches.forEach(m=>{empty[m.id]={home:'',away:''};});
+    setScores(empty);
+    if(onScoresChange)onScoresChange(empty);
+    setSaved(false);
+  };
+  if(loading)return <div className="loading">Loading...</div>;
+  const byGroup={};
+  matches.forEach(m=>{if(!byGroup[m.group_id])byGroup[m.group_id]=[];byGroup[m.group_id].push(m);});
+  const groupTeams={};
+  Object.values(teams).forEach(t=>{if(!groupTeams[t.group_id])groupTeams[t.group_id]=[];groupTeams[t.group_id].push(t.id);});
+  const filled=matches.filter(m=>scores[m.id]?.home!==''&&scores[m.id]?.away!==''&&scores[m.id]?.home!=null&&scores[m.id]?.away!=null).length;
+  return(
+    <div>
+      <div className="info-box"><p>Predict the score for all 72 group stage matches. Your implied group standings are shown live to the right as you fill in scores. ({filled}/72 completed)</p></div>
+      {GROUPS.map(g=>(
+        <div key={g} className="group-section">
+          <div className="group-title">Group {g}</div>
+          <div className="group-layout">
+            <div className="group-matches">
+              {(byGroup[g]||[]).map(m=>{
+                const home=teams[m.home_team_id],away=teams[m.away_team_id];
+                const sched=MATCH_SCHEDULE[m.match_number]||{};
+                return(
+                  <div key={m.id} style={{borderBottom:'1px solid var(--border)',paddingBottom:6,marginBottom:2}}>
+                    <div style={{textAlign:'center',fontSize:10,color:'var(--ink4)',padding:'6px 0 4px',letterSpacing:'.3px'}}>
+                      {sched.date} · {sched.cet} CET / {sched.gmt} GMT · <span style={{color:'var(--ink4)'}}>{sched.venue?.split(',')[0]}</span>
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <div className="match-team" style={{flex:1}}><Flag name={home?.name}/><span>{home?.name}</span></div>
+                      <input className="score-input" type="number" min="0" max="20" value={scores[m.id]?.home??''} onChange={e=>update(m.id,'home',e.target.value)} placeholder="0" disabled={locked}/>
+                      <span className="match-vs">–</span>
+                      <input className="score-input" type="number" min="0" max="20" value={scores[m.id]?.away??''} onChange={e=>update(m.id,'away',e.target.value)} placeholder="0" disabled={locked}/>
+                      <div className="match-team away" style={{flex:1}}><Flag name={away?.name}/><span>{away?.name}</span></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <GroupStandingsPanel teamMap={teams} groupId={g} groupTeamIds={groupTeams[g]||[]} groupMatches={byGroup[g]||[]} scoreMap={scores}/>
+          </div>
+        </div>
+      ))}
+      {!locked&&(
+        <div className="save-bar">
+          <p>{filled}/72 matches predicted {saved&&<span style={{color:'var(--green)'}}>· Saved</span>}</p>
+          <div style={{display:'flex',gap:8}}>
+            <button className="btn btn-sm btn-outline" onClick={clearAll}>Clear</button>
+            <button className="btn btn-sm" onClick={save} disabled={saving}>{saving?'Saving...':'Save'}</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function KnockoutPredictions({session,locked}){
+  const[allTeams,setAllTeams]=useState([]);
+  const[groupMatches,setGroupMatches]=useState([]);
+  const[koMatches,setKoMatches]=useState([]);
+  const[groupPredScores,setGroupPredScores]=useState({});
+  const[koPicks,setKoPicks]=useState({});
+  const[loading,setLoading]=useState(true);
+  const[saving,setSaving]=useState(false);
+  const[saved,setSaved]=useState(false);
+  useEffect(()=>{
+    Promise.all([
+      sb.from('teams').select('*'),
+      sb.from('matches').select('*').eq('stage','group').order('match_number'),
+      sb.from('matches').select('*').neq('stage','group').order('match_number'),
+      sb.from('predictions').select('*').eq('user_id',session.user.id),
+      sb.from('knockout_predictions').select('*').eq('user_id',session.user.id),
+    ]).then(([{data:t},{data:gm},{data:km},{data:gp},{data:kp}])=>{
+      setAllTeams(t||[]);setGroupMatches(gm||[]);setKoMatches(km||[]);
+      const sMap={};(gp||[]).forEach(p=>{sMap[p.match_id]={home:p.predicted_home_goals,away:p.predicted_away_goals};});
+      setGroupPredScores(sMap);
+      const kMap={};(kp||[]).forEach(p=>{kMap[p.match_id]=p.predicted_winner_id;});
+      setKoPicks(kMap);setLoading(false);
+    });
+  },[session]);
+  const teamMap=useMemo(()=>{const m={};allTeams.forEach(t=>m[t.id]=t);return m;},[allTeams]);
+  const{posMap,thirdSlots,standings,best8thirds}=useMemo(()=>{
+    if(!allTeams.length||!groupMatches.length)return{posMap:{},thirdSlots:{},standings:{},best8thirds:[]};
+    return deriveR32Teams(allTeams,groupMatches,groupPredScores);
+  },[allTeams,groupMatches,groupPredScores]);
+  const groupFilled=useMemo(()=>groupMatches.filter(m=>groupPredScores[m.id]?.home!=null&&groupPredScores[m.id]?.away!=null).length,[groupMatches,groupPredScores]);
+  const r32TeamPairs=useMemo(()=>{
+    if(groupFilled<72)return R32_FIXED.map(([a,b])=>({home:null,away:null,homeLabel:a.label,awayLabel:b.label}));
+    // Use FIFA Annex C lookup table for 3rd place assignments
+    const qualifyingGroups=GROUPS.filter(g=>standings[g]?.[2]&&best8thirds.includes(standings[g][2].id));
+    const R32_IDX_TO_MATCHNUM={1:74,4:77,6:79,7:80,8:81,9:82,12:85,14:87};
+    return R32_FIXED.map(([slotA,slotB],idx)=>{
+      const resolve=(slot)=>{
+        if(slot.type!=='3rd')return resolveSlot(slot,standings,best8thirds);
+        const matchNum=R32_IDX_TO_MATCHNUM[idx];
+        if(!matchNum)return null;
+        return resolveSlotFromLookup(matchNum,qualifyingGroups,standings);
+      };
+      return{home:resolve(slotA),away:resolve(slotB),homeLabel:slotA.label,awayLabel:slotB.label};
+    });
+  },[standings,best8thirds,groupFilled]);
+  const derivedRounds=useMemo(()=>{
+    const r32M=koMatches.filter(m=>m.stage==='r32');
+    const r16M=koMatches.filter(m=>m.stage==='r16');
+    const qfM=koMatches.filter(m=>m.stage==='qf');
+    const sfM=koMatches.filter(m=>m.stage==='sf');
+    const finM=koMatches.filter(m=>m.stage==='final');
+    const gw=(matchId,homeId,awayId)=>{const p=koPicks[matchId];return p===homeId?homeId:p===awayId?awayId:null;};
+    const r32=r32M.map((m,i)=>({matchId:m.id,matchNum:m.match_number,home:r32TeamPairs[i]?.home||null,away:r32TeamPairs[i]?.away||null,homeSrc:null,awaySrc:null,homeLabel:r32TeamPairs[i]?.homeLabel,awayLabel:r32TeamPairs[i]?.awayLabel}));
+    const r16=r16M.map((m,i)=>{const a=r32[i*2],b=r32[i*2+1];return{matchId:m.id,matchNum:m.match_number,home:a?gw(a.matchId,a.home,a.away):null,away:b?gw(b.matchId,b.home,b.away):null,homeSrc:a?.matchNum,awaySrc:b?.matchNum,homeLabel:null,awayLabel:null};});
+    const qf=qfM.map((m,i)=>{const a=r16[i*2],b=r16[i*2+1];return{matchId:m.id,matchNum:m.match_number,home:a?gw(a.matchId,a.home,a.away):null,away:b?gw(b.matchId,b.home,b.away):null,homeSrc:a?.matchNum,awaySrc:b?.matchNum};});
+    const sf=sfM.map((m,i)=>{const a=qf[i*2],b=qf[i*2+1];return{matchId:m.id,matchNum:m.match_number,home:a?gw(a.matchId,a.home,a.away):null,away:b?gw(b.matchId,b.home,b.away):null,homeSrc:a?.matchNum,awaySrc:b?.matchNum};});
+    const fin=finM.map((m,i)=>{const a=sf[i*2],b=sf[i*2+1];return{matchId:m.id,matchNum:m.match_number,home:a?gw(a.matchId,a.home,a.away):null,away:b?gw(b.matchId,b.home,b.away):null,homeSrc:a?.matchNum,awaySrc:b?.matchNum};});
+    return{r32,r16,qf,sf,final:fin};
+  },[koMatches,r32TeamPairs,koPicks]);
+  const pickWinner=(matchId,teamId)=>{
+    if(locked)return;
+    setKoPicks(p=>({...p,[matchId]:p[matchId]===teamId?null:teamId}));
+  };
+  const save=async()=>{
+    setSaving(true);
+    const upserts=Object.entries(koPicks).filter(([,v])=>v!=null).map(([matchId,winnerId])=>({user_id:session.user.id,match_id:parseInt(matchId),predicted_winner_id:winnerId}));
+    if(upserts.length>0)await sb.from('knockout_predictions').upsert(upserts,{onConflict:'user_id,match_id'});
+    setSaved(true);setTimeout(()=>setSaved(false),3000);setSaving(false);
+  };
+  const clearKo=async()=>{
+    if(!window.confirm('Clear all knockout picks? This cannot be undone.'))return;
+    const ids=koMatches.map(m=>m.id);
+    const{error}=await sb.from('knockout_predictions').delete().eq('user_id',session.user.id).in('match_id',ids);
+    console.log('Clear KO result:',error);
+    setKoPicks({});
+    setSaved(false);
+  };
+  if(loading)return <div className="loading">Loading bracket...</div>;
+
+
+  const rounds=[
+    {key:'r32',label:'Round of 32',pts:2,matches:derivedRounds.r32},
+    {key:'r16',label:'Round of 16',pts:4,matches:derivedRounds.r16},
+    {key:'qf',label:'Quarter Finals',pts:6,matches:derivedRounds.qf},
+    {key:'sf',label:'Semi Finals',pts:8,matches:derivedRounds.sf},
+    {key:'final',label:'Final',pts:10,matches:derivedRounds.final},
+  ];
+
+  return(
+    <div>
+      <div className="info-box" style={{marginBottom:'1.5rem'}}><p>Click a team to pick them as the winner — they advance to the next round automatically. Your Round of 32 is generated from your group stage predictions.</p></div>
+      <div className="bracket-wrap">
+        <div className="bracket-tree">
+          {rounds.map(({key,label,pts,matches})=>(
+            <div key={key} className="bracket-col">
+              <div className="bracket-col-header">{label} <span className="bracket-col-pts">({pts}p)</span></div>
+              {matches.map(({matchId,matchNum,home,away,homeSrc,awaySrc,homeLabel,awayLabel})=>{
+                const homeTeam=home?teamMap[home]:null;
+                const awayTeam=away?teamMap[away]:null;
+                const picked=koPicks[matchId];
+                const bothKnown=!!home&&!!away;
+                const sched=KO_SCHEDULE[matchNum]||{};
+                return(
+                  <div key={matchId} className="bracket-match-wrap">
+                    <div className="bracket-match">
+                      {sched.date&&<div className="bracket-match-label">Game {matchNum} · {sched.date} · {sched.cet} CET</div>}
+                      {[[homeTeam,home,homeSrc,homeLabel],[awayTeam,away,awaySrc,awayLabel]].map(([team,id,src,label],ti)=>(
+                        <div key={ti} className={`bracket-team${!team?' tbd':''}${picked===id?' selected':''}${locked||!bothKnown?' disabled':''}`}
+                          onClick={()=>bothKnown&&!locked&&pickWinner(matchId,id)}>
+                          <span className="bracket-flag"><Flag name={team?.name} size={16}/></span>
+                          <span className="bracket-name" style={{color:!team?'var(--ink4)':undefined,fontStyle:!team?'italic':undefined,fontSize:!team&&(label||src)?'10px':undefined}}>{team?team.name:label||(src?`Winner of Game ${src}`:'TBD')}</span>
+                          {picked===id&&<span className="bracket-winner-badge">✓</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+      {!locked&&(
+        <div className="save-bar">
+          <p>{Object.values(koPicks).filter(Boolean).length} knockout picks made {saved&&<span style={{color:'var(--green)'}}>· Saved</span>}</p>
+          <div style={{display:'flex',gap:8}}>
+            <button className="btn btn-sm btn-outline" onClick={clearKo}>Clear</button>
+            <button className="btn btn-sm" onClick={save} disabled={saving}>{saving?'Saving...':'Save'}</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GoalsTally({session,scores}){
+  // Calculate tally from live scores state passed from parent
+  const tally = useMemo(()=>{
+    if(scores){
+      // Use live state from GroupPredictions
+      const entries=Object.values(scores).filter(s=>s.home!==''&&s.away!==''&&s.home!=null&&s.away!=null);
+      const total=entries.reduce((s,p)=>{const h=parseInt(p.home),a=parseInt(p.away);return s+(isNaN(h)?0:h)+(isNaN(a)?0:a);},0);
+      return{total,count:entries.length};
+    }
+    return null;
+  },[scores]);
+  if(!tally||tally.count===0)return null;
+  return(
+    <div style={{marginTop:8,padding:'10px 12px',background:'var(--cream)',border:'1px solid var(--border)',borderRadius:'var(--r)',fontSize:13,color:'var(--ink2)',lineHeight:1.7}}>
+      You have predicted a total of <strong style={{color:'var(--ink)'}}>{tally.total} goals</strong> in {tally.count}/72 group stage matches. There are 31 matches in the knockout stages. Your total goals prediction is used as a tiebreaker. Individual shoot-out penalties do not count — refer to the rules section.
+    </div>
+  );
+}
+
+function SpecialPredictions({session,locked,groupScores}){
+  const[form,setForm]=useState({top_scorer_name:'',top_assister_name:'',total_goals:'',penalty_shootouts:''});
+  const[champion,setChampion]=useState(null);
+  const[loading,setLoading]=useState(true);
+  const[saving,setSaving]=useState(false);
+  const[saved,setSaved]=useState(false);
+  useEffect(()=>{
+    sb.from('special_predictions').select('*').eq('user_id',session.user.id).maybeSingle().then(({data:s})=>{
+      if(s)setForm({top_scorer_name:s.top_scorer_name||'',top_assister_name:s.top_assister_name||'',total_goals:s.total_goals||'',penalty_shootouts:s.penalty_shootouts||''});
+      setLoading(false);
+    });
+  },[session]);
+  useEffect(()=>{
+    async function loadChampion(){
+      const{data:finalMatch}=await sb.from('matches').select('id').eq('stage','final').single();
+      if(!finalMatch)return;
+      const{data:pick}=await sb.from('knockout_predictions').select('predicted_winner_id').eq('user_id',session.user.id).eq('match_id',finalMatch.id).maybeSingle();
+      if(!pick?.predicted_winner_id)return;
+      const{data:team}=await sb.from('teams').select('*').eq('id',pick.predicted_winner_id).single();
+      setChampion(team||null);
+    }
+    loadChampion();
+  },[session]);
+  const clearExtras=async()=>{
+    if(!window.confirm('Clear all extra predictions? This cannot be undone.'))return;
+    const{error}=await sb.from('special_predictions').delete().eq('user_id',session.user.id);
+    console.log('Clear extras result:',error);
+    setForm({top_scorer_name:'',top_assister_name:'',total_goals:'',penalty_shootouts:''});
+    setChampion(null);
+    setSaved(false);
+  };
+  const save=async()=>{
+    setSaving(true);
+    const{data:finalMatch}=await sb.from('matches').select('id').eq('stage','final').single();
+    let championId=null;
+    if(finalMatch){
+      const{data:pick}=await sb.from('knockout_predictions').select('predicted_winner_id').eq('user_id',session.user.id).eq('match_id',finalMatch.id).maybeSingle();
+      championId=pick?.predicted_winner_id||null;
+    }
+    await sb.from('special_predictions').upsert({
+      user_id:session.user.id,champion_team_id:championId,
+      top_scorer_name:form.top_scorer_name||null,
+      top_assister_name:form.top_assister_name||null,
+      total_goals:form.total_goals?parseInt(form.total_goals):null,
+      penalty_shootouts:form.penalty_shootouts?parseInt(form.penalty_shootouts):null,
+    },{onConflict:'user_id'});
+    setSaved(true);setTimeout(()=>setSaved(false),3000);setSaving(false);
+  };
+  if(loading)return <div className="loading">Loading...</div>;
+  const iStyle={width:'100%',padding:'10px 12px',background:'var(--white)',border:'1px solid var(--border2)',borderRadius:'var(--r)',color:'var(--ink)',fontFamily:'var(--font-sans)',fontSize:14,outline:'none'};
+  return(
+    <div>
+      <div className="info-box"><p>Each correct special prediction is worth <strong>10 points</strong>. All fields are locked before the tournament starts.</p></div>
+      <div style={{maxWidth:480}}>
+        <div className="field">
+          <label>World Champion</label>
+          <div style={{padding:'10px 12px',background:'var(--cream)',border:'1px solid var(--border)',borderRadius:'var(--r)',fontSize:14,color:champion?'var(--ink)':'var(--ink4)'}}>
+            {champion?<span style={{display:'flex',alignItems:'center',gap:6}}><Flag name={champion.name}/>{champion.name}</span>:<span>Auto-set from your Final pick in the Knockout Stage</span>}
+          </div>
+        </div>
+        <div className="field"><label>Top Scorer — player name</label><input type="text" value={form.top_scorer_name} onChange={e=>!locked&&setForm(f=>({...f,top_scorer_name:e.target.value}))} placeholder="e.g. Erling Haaland" style={iStyle} disabled={locked}/></div>
+        <div className="field"><label>Top Assister — player name</label><input type="text" value={form.top_assister_name} onChange={e=>!locked&&setForm(f=>({...f,top_assister_name:e.target.value}))} placeholder="e.g. Kevin De Bruyne" style={iStyle} disabled={locked}/></div>
+        <div className="field">
+          <label>Total Goals in Tournament</label>
+          <input type="number" value={form.total_goals} onChange={e=>!locked&&setForm(f=>({...f,total_goals:e.target.value}))} placeholder="e.g. 140" min="0" max="300" style={iStyle} disabled={locked}/>
+          <GoalsTally session={session} scores={groupScores}/>
+        </div>
+        <div className="field"><label>Knockout Games Decided by Penalties</label><input type="number" value={form.penalty_shootouts} onChange={e=>!locked&&setForm(f=>({...f,penalty_shootouts:e.target.value}))} placeholder="e.g. 4" min="0" max="31" style={iStyle} disabled={locked}/></div>
+        {!locked&&<div style={{display:'flex',alignItems:'center',gap:8,marginTop:8}}>
+          <button className="btn btn-sm btn-outline" onClick={clearExtras}>Clear</button>
+          <button className="btn btn-sm" onClick={save} disabled={saving}>{saving?'Saving...':'Save'}</button>
+          {saved&&<span style={{color:'var(--green)',fontSize:13}}>Saved</span>}
+        </div>}
+      </div>
+    </div>
+  );
+}
+function LeaderboardScoresPage({session,profile}){
+  const[tab,setTab]=useState('leaderboard');
+  const[scoresVisible,setScoresVisible]=useState(false);
+  const[loadingVis,setLoadingVis]=useState(true);
+  useEffect(()=>{
+    sb.from('app_settings').select('value').eq('key','scores_published').maybeSingle().then(({data})=>{
+      setScoresVisible(data?.value==='true');
+      setLoadingVis(false);
+    });
+  },[]);
+  return(
+    <div>
+      <div className="page-header">
+        <h1 className="page-title">Scores & Leaderboard</h1>
+        <p className="page-sub">Live standings and all predictions</p>
+      </div>
+      <div className="pred-nav" style={{marginBottom:'2rem'}}>
+        <button className={`pred-nav-btn${tab==='leaderboard'?' active':''}`} onClick={()=>setTab('leaderboard')}>Leaderboard</button>
+        <button className={`pred-nav-btn${tab==='group'?' active':''}`} onClick={()=>setTab('group')}>Group Stage</button>
+        <button className={`pred-nav-btn${tab==='knockout'?' active':''}`} onClick={()=>setTab('knockout')}>Knockout Stage</button>
+        <button className={`pred-nav-btn${tab==='specials'?' active':''}`} onClick={()=>setTab('specials')}>Extra Predictions</button>
+      </div>
+      {!loadingVis&&!scoresVisible&&tab!=='leaderboard'&&<div className="info-box"><p>Predictions are not yet published. Check back after the deadline.</p></div>}
+      {tab==='leaderboard'&&<LeaderboardTab session={session} profile={profile}/>}
+      {tab==='group'&&scoresVisible&&<GroupScoresTab session={session}/>}
+      {tab==='knockout'&&scoresVisible&&<KnockoutScoresTab session={session}/>}
+      {tab==='specials'&&scoresVisible&&<SpecialsScoresTab session={session}/>}
+    </div>
+  );
+}
+
+function LeaderboardTab({session,profile}){
+  const[data,setData]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const loadScores=()=>{
+    setLoading(true);
+    Promise.all([
+      sb.from('scores').select('*,profiles(display_name)'),
+      sb.from('special_predictions').select('user_id,total_goals'),
+      sb.from('matches').select('actual_home_goals,actual_away_goals'),
+      sb.from('app_settings').select('key,value').eq('key','actual_total_goals'),
+    ]).then(([{data:sc},{data:sp},{data:m},{data:gs}])=>{
+      const total=(m||[]).reduce((s,match)=>match.actual_home_goals!=null?s+match.actual_home_goals+match.actual_away_goals:s,0);
+      const hasResults=(m||[]).some(match=>match.actual_home_goals!=null);
+      const adminGoals=gs&&gs[0]?.value?parseInt(gs[0].value):null;
+      const actualTotal=adminGoals||(hasResults?total:null);
+      const sorted=(sc||[]).sort((a,b)=>{
+        if(b.total_points!==a.total_points)return b.total_points-a.total_points;
+        if(actualTotal==null)return 0;
+        const spA=(sp||[]).find(s=>s.user_id===a.user_id);
+        const spB=(sp||[]).find(s=>s.user_id===b.user_id);
+        const diffA=spA?.total_goals!=null?Math.abs(spA.total_goals-actualTotal):9999;
+        const diffB=spB?.total_goals!=null?Math.abs(spB.total_goals-actualTotal):9999;
+        return diffA-diffB;
+      });
+      setData(sorted);setLoading(false);
+    });
+  };
+  useEffect(()=>{loadScores();},[]);
+  if(loading)return <div className="loading">Loading...</div>;
+  return(
+    <div>
+
+      {data.length===0?(
+        <div className="info-box"><p>No scores yet — the tournament has not started.</p></div>
+      ):(
+        <div className="lb-wrap">
+          <table className="lb-table">
+            <thead><tr><th>#</th><th>Player</th><th>Group Stage</th><th>Knockout</th><th>Specials</th><th>Total</th></tr></thead>
+            <tbody>
+              {data.map((row,i)=>(
+                <tr key={row.user_id} className={row.user_id===session.user.id?'lb-you':''}>
+                  <td><span className={`lb-rank${i===0?' top1':i===1?' top2':i===2?' top3':''}`}>{i+1}</span></td>
+                  <td style={{fontWeight:500}}>{row.profiles?.display_name||'—'}{row.user_id===session.user.id&&<span className="badge badge-green" style={{marginLeft:8}}>You</span>}</td>
+                  <td style={{color:'var(--ink3)',fontSize:13}}>{row.group_stage_points}</td>
+                  <td style={{color:'var(--ink3)',fontSize:13}}>{row.knockout_points}</td>
+                  <td style={{color:'var(--ink3)',fontSize:13}}>{row.special_points}</td>
+                  <td><span className="lb-pts">{row.total_points}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GroupScoresTab({session}){
+  const[matches,setMatches]=useState([]);
+  const[teams,setTeams]=useState({});
+  const[profiles,setProfiles]=useState([]);
+  const[allPreds,setAllPreds]=useState([]);
+  const[userScores,setUserScores]=useState({});
+  const[openMatch,setOpenMatch]=useState(null);
+  const[loading,setLoading]=useState(true);
+  useEffect(()=>{
+    Promise.all([
+      sb.from('matches').select('*').eq('stage','group').order('match_number'),
+      sb.from('teams').select('*'),
+      sb.from('profiles').select('id,display_name').order('display_name'),
+      sb.from('predictions').select('*'),
+      sb.from('scores').select('*'),
+    ]).then(([{data:m},{data:t},{data:pr},{data:p},{data:sc}])=>{
+      setMatches(m||[]);
+      const tMap={};(t||[]).forEach(team=>tMap[team.id]=team);setTeams(tMap);
+      setProfiles(pr||[]);setAllPreds(p||[]);
+      const sMap={};(sc||[]).forEach(s=>sMap[s.user_id]=s);setUserScores(sMap);
+      setLoading(false);
+    });
+  },[]);
+  if(loading)return <div className="loading">Loading...</div>;
+  const byGroup={};
+  matches.forEach(m=>{if(!byGroup[m.group_id])byGroup[m.group_id]=[];byGroup[m.group_id].push(m);});
+  const sortedProfiles=[...profiles].sort((a,b)=>(userScores[b.id]?.total_points||0)-(userScores[a.id]?.total_points||0));
+
+  const getResultClass=(pred,match)=>{
+    if(!pred||pred.home==null||pred.away==null)return'no-pred';
+    if(match.actual_home_goals==null)return'pending';
+    if(pred.home===match.actual_home_goals&&pred.away===match.actual_away_goals)return'exact';
+    const pr=pred.home>pred.away?'H':pred.home<pred.away?'A':'D';
+    const ar=match.actual_home_goals>match.actual_away_goals?'H':match.actual_home_goals<match.actual_away_goals?'A':'D';
+    return pr===ar?'correct':'wrong';
+  };
+
+  return(
+    <div>
+      {/* Legend */}
+      <div style={{display:'flex',gap:16,marginBottom:'1.5rem',flexWrap:'wrap',fontSize:12,color:'var(--ink3)'}}>
+        <span style={{display:'flex',alignItems:'center',gap:6}}><span style={{width:12,height:12,borderRadius:2,background:'#2a5c3f',display:'inline-block'}}/> Exact score (3 pts)</span>
+        <span style={{display:'flex',alignItems:'center',gap:6}}><span style={{width:12,height:12,borderRadius:2,background:'#b87d2a',display:'inline-block'}}/> Correct result (1 pt)</span>
+        <span style={{display:'flex',alignItems:'center',gap:6}}><span style={{width:12,height:12,borderRadius:2,background:'#9e3a2a',display:'inline-block'}}/> Incorrect (0 pts)</span>
+        <span style={{display:'flex',alignItems:'center',gap:6}}><span style={{width:12,height:12,borderRadius:2,background:'var(--white)',border:'1px solid var(--border)',display:'inline-block'}}/> Pending result</span>
+      </div>
+      {GROUPS.map(g=>(
+        <div key={g} className="group-section">
+          <div className="group-title">Group {g}</div>
+          {(byGroup[g]||[]).map(m=>{
+            const home=teams[m.home_team_id],away=teams[m.away_team_id];
+            const sched=MATCH_SCHEDULE[m.match_number]||{};
+            const hasResult=m.actual_home_goals!=null&&m.actual_away_goals!=null;
+            const isOpen=openMatch===m.id;
+            const predMap={};
+            allPreds.filter(p=>p.match_id===m.id).forEach(p=>{predMap[p.user_id]={home:p.predicted_home_goals,away:p.predicted_away_goals};});
+            return(
+              <div key={m.id} style={{marginBottom:2}}>
+                {/* Match header row */}
+                <div onClick={()=>setOpenMatch(isOpen?null:m.id)} style={{display:'grid',gridTemplateColumns:'1fr 120px 1fr 50px',alignItems:'center',padding:'10px 14px',background:'var(--white)',border:'1px solid var(--border)',borderRadius:isOpen?'var(--r) var(--r) 0 0':'var(--r)',cursor:'pointer',gap:8,userSelect:'none'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:6,fontSize:13,fontWeight:500,color:'var(--ink)'}}>
+                    <Flag name={home?.name} size={16}/>{home?.name}
+                  </div>
+                  <div style={{textAlign:'center',fontSize:11,color:'var(--ink3)'}}>
+                    {hasResult
+                      ? <span style={{fontFamily:'var(--font-serif)',fontSize:'1.2rem',fontWeight:600,color:'var(--ink)',letterSpacing:'1px'}}>{m.actual_home_goals} – {m.actual_away_goals}</span>
+                      : <span style={{lineHeight:1.7}}>{sched.date}<br/>{sched.cet} CET · {sched.gmt} GMT</span>
+                    }
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',gap:6,fontSize:13,fontWeight:500,color:'var(--ink)'}}>
+                    {away?.name}<Flag name={away?.name} size={16}/>
+                  </div>
+                  <span style={{fontSize:10,color:'var(--ink4)'}}>{isOpen?'▲':'▼'}</span>
+                </div>
+                {/* Expanded predictions */}
+                {isOpen&&(
+                  <div style={{border:'1px solid var(--border)',borderTop:'none',borderRadius:'0 0 var(--r) var(--r)',overflow:'hidden',marginBottom:4}}>
+                    {/* Sub-header — 3 cols matching header layout */}
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 120px 1fr 50px',alignItems:'center',padding:'7px 14px',background:'var(--cream)',borderBottom:'1px solid var(--border)'}}>
+                      <div style={{fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'1px',color:'var(--ink4)'}}>Predictions</div>
+                      <div style={{textAlign:'center',fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'1px',color:'var(--ink4)'}}>Predicted Score</div>
+                      <div></div>
+                      <div style={{textAlign:'center',fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'1px',color:'var(--ink4)'}}>Pts</div>
+                    </div>
+                    {/* User rows */}
+                    {sortedProfiles.map((pr,i)=>{
+                      const pred=predMap[pr.id];
+                      const cls=getResultClass(pred,m);
+                      const bg=cls==='exact'?'#2a5c3f':cls==='correct'?'#b87d2a':cls==='wrong'?'#9e3a2a':'var(--white)';
+                      const textCol=cls==='pending'||cls==='no-pred'?'var(--ink2)':'#ffffff';
+                      const borderCol=cls==='pending'||cls==='no-pred'?'var(--border)':bg;
+                      const pts=cls==='exact'?'+3':cls==='correct'?'+1':cls==='wrong'?'0':'';
+                      const isYou=pr.id===session.user.id;
+                      return(
+                        <div key={pr.id} style={{display:'grid',gridTemplateColumns:'1fr 120px 1fr 50px',alignItems:'center',padding:'9px 14px',background:bg,borderBottom:i<sortedProfiles.length-1?`1px solid ${cls==='pending'||cls==='no-pred'?'var(--border)':'rgba(255,255,255,0.15)'}`:'none'}}>
+                          <div style={{fontSize:13,color:textCol,fontWeight:isYou?600:400}}>
+                            {pr.display_name}{isYou&&<span style={{fontSize:10,opacity:.7,marginLeft:6}}>you</span>}
+                          </div>
+                          <div style={{textAlign:'center',fontFamily:'var(--font-serif)',fontSize:'1rem',fontWeight:500,color:textCol}}>
+                            {pred&&pred.home!=null?`${pred.home} – ${pred.away}`:'—'}
+                          </div>
+                          <div></div>
+                          <div style={{textAlign:'center',fontSize:11,fontWeight:600,color:textCol,opacity:.8}}>
+                            {pts}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function KnockoutScoresTab({session}){
+  const[profiles,setProfiles]=useState([]);
+  const[allKoPreds,setAllKoPreds]=useState([]);
+  const[allGroupPreds,setAllGroupPreds]=useState([]);
+  const[koMatches,setKoMatches]=useState([]);
+  const[groupMatches,setGroupMatches]=useState([]);
+  const[allTeams,setAllTeams]=useState([]);
+  const[userScores,setUserScores]=useState({});
+  const[loading,setLoading]=useState(true);
+  useEffect(()=>{
+    Promise.all([
+      sb.from('profiles').select('id,display_name').order('display_name'),
+      sb.from('knockout_predictions').select('*'),
+      sb.from('predictions').select('*'),
+      sb.from('matches').select('*').neq('stage','group').order('match_number'),
+      sb.from('matches').select('*').eq('stage','group').order('match_number'),
+      sb.from('teams').select('*'),
+      sb.from('scores').select('*'),
+    ]).then(([{data:pr},{data:kp},{data:gp},{data:km},{data:gm},{data:t},{data:sc}])=>{
+      setProfiles(pr||[]);setAllKoPreds(kp||[]);setAllGroupPreds(gp||[]);
+      setKoMatches(km||[]);setGroupMatches(gm||[]);setAllTeams(t||[]);
+      const sMap={};(sc||[]).forEach(s=>sMap[s.user_id]=s);setUserScores(sMap);
+      setLoading(false);
+    });
+  },[]);
+  if(loading)return <div className="loading">Loading...</div>;
+
+  const teamMap={};allTeams.forEach(t=>teamMap[t.id]=t);
+  const sortedProfiles=[...profiles].sort((a,b)=>(userScores[b.id]?.total_points||0)-(userScores[a.id]?.total_points||0));
+  const stages=['r32','r16','qf','sf','final'];
+
+  // Get teams a user predicted for a stage
+  const getUserPredictedTeams=(userId,stage)=>{
+    const userGroupPreds=allGroupPreds.filter(p=>p.user_id===userId);
+    const userPredMap={};
+    userGroupPreds.forEach(p=>{userPredMap[p.match_id]={home:p.predicted_home_goals,away:p.predicted_away_goals};});
+    const userKoPreds=allKoPreds.filter(p=>p.user_id===userId);
+    const userKoMap={};
+    userKoPreds.forEach(p=>{userKoMap[p.match_id]=p.predicted_winner_id;});
+    // Build a map of which teams the user predicted to win each KO match
+    // This lets us derive who enters each subsequent round
+    const r32Matches=koMatches.filter(m=>m.stage==='r32');
+    const r16Matches=koMatches.filter(m=>m.stage==='r16');
+    const qfMatches=koMatches.filter(m=>m.stage==='qf');
+    const sfMatches=koMatches.filter(m=>m.stage==='sf');
+
+    // For R32: teams that qualified from group stage
+    const{posMap,thirdSlots,standings:st}=deriveR32Teams(allTeams,groupMatches,userPredMap);
+    const best8=GROUPS.map(g=>st[g]?.[2]).filter(Boolean).sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf).slice(0,8).map(t=>t.id);
+    const qualGroups3=GROUPS.filter(g=>st[g]?.[2]&&best8.includes(st[g][2].id));
+    const R32_IDX_MNUM={1:74,4:77,6:79,7:80,8:81,9:82,12:85,14:87};
+    const r32pairs=R32_FIXED.map(([slotA,slotB],i)=>{
+      const ru=(slot)=>{
+        if(slot.type!=='3rd')return resolveSlot(slot,st,best8);
+        const mn=R32_IDX_MNUM[i];if(!mn)return null;
+        return resolveSlotFromLookup(mn,qualGroups3,st);
+      };
+      return{home:ru(slotA),away:ru(slotB),matchId:r32Matches[i]?.id};
+    });
+
+    if(stage==='r32'){
+      const teams=new Set();
+      r32pairs.forEach(({home,away})=>{if(home)teams.add(home);if(away)teams.add(away);});
+      return teams;
+    }
+
+    // Helper: get winner of a KO match based on user's pick
+    const getWinner=(matchId,homeId,awayId)=>{
+      const p=userKoMap[matchId];
+      return p===homeId?homeId:p===awayId?awayId:null;
+    };
+
+    // R16 entrants = winners of R32
+    const r32Results=r32Matches.map((m,i)=>({
+      matchId:m.id,
+      home:r32pairs[i]?.home||null,
+      away:r32pairs[i]?.away||null,
+      winner:getWinner(m.id,r32pairs[i]?.home,r32pairs[i]?.away),
+    }));
+
+    if(stage==='r16'){
+      const teams=new Set();
+      r32Results.forEach(r=>{if(r.winner)teams.add(r.winner);});
+      return teams;
+    }
+
+    // QF entrants = winners of R16
+    const r16Results=r16Matches.map((m,i)=>{
+      const a=r32Results[i*2],b=r32Results[i*2+1];
+      const home=a?.winner||null,away=b?.winner||null;
+      return{matchId:m.id,home,away,winner:getWinner(m.id,home,away)};
+    });
+
+    if(stage==='qf'){
+      const teams=new Set();
+      r16Results.forEach(r=>{if(r.winner)teams.add(r.winner);});
+      return teams;
+    }
+
+    // SF entrants = winners of QF
+    const qfResults=qfMatches.map((m,i)=>{
+      const a=r16Results[i*2],b=r16Results[i*2+1];
+      const home=a?.winner||null,away=b?.winner||null;
+      return{matchId:m.id,home,away,winner:getWinner(m.id,home,away)};
+    });
+
+    if(stage==='sf'){
+      const teams=new Set();
+      qfResults.forEach(r=>{if(r.winner)teams.add(r.winner);});
+      return teams;
+    }
+
+    // Final entrants = winners of SF
+    const sfResults=sfMatches.map((m,i)=>{
+      const a=qfResults[i*2],b=qfResults[i*2+1];
+      const home=a?.winner||null,away=b?.winner||null;
+      return{matchId:m.id,home,away,winner:getWinner(m.id,home,away)};
+    });
+    const teams=new Set();
+    sfResults.forEach(r=>{if(r.winner)teams.add(r.winner);});
+    return teams;
+  };
+
+  // Actual teams in each stage
+  const actualTeamsInStage=(stage)=>{
+    const s=new Set();
+    koMatches.filter(m=>m.stage===stage).forEach(m=>{
+      if(m.actual_home_team_id)s.add(m.actual_home_team_id);
+      if(m.actual_away_team_id)s.add(m.actual_away_team_id);
+    });
+    // For R32: derive from actual group results if not manually assigned
+    if(stage==='r32'&&s.size===0){
+      const allGroupResultsIn=groupMatches.length>0&&groupMatches.every(m=>m.actual_home_goals!=null&&m.actual_away_goals!=null);
+      if(allGroupResultsIn){
+        const actualScores={};
+        groupMatches.forEach(m=>{actualScores[m.id]={home:m.actual_home_goals,away:m.actual_away_goals};});
+        const{standings:actSt}=deriveR32Teams(allTeams,groupMatches,actualScores);
+        const b8=GROUPS.map(g=>actSt[g]?.[2]).filter(Boolean).sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf).slice(0,8).map(t=>t.id);
+        const qG=GROUPS.filter(g=>actSt[g]?.[2]&&b8.includes(actSt[g][2].id));
+        const IDX_MN={1:74,4:77,6:79,7:80,8:81,9:82,12:85,14:87};
+        R32_FIXED.forEach(([slotA,slotB],idx)=>{
+          const mn=IDX_MN[idx];
+          const tA=slotA.type==='3rd'?(mn?resolveSlotFromLookup(mn,qG,actSt):null):resolveSlot(slotA,actSt,b8);
+          const tB=slotB.type==='3rd'?(mn?resolveSlotFromLookup(mn,qG,actSt):null):resolveSlot(slotB,actSt,b8);
+          if(tA)s.add(tA);if(tB)s.add(tB);
+        });
+      }
+    }
+    // For R16/QF/SF/Final: derive winners from actual ko match results game by game
+    if(stage!=='r32'&&s.size===0){
+      const prevStage={r16:'r32',qf:'r16',sf:'qf',final:'sf'}[stage];
+      if(prevStage){
+        const prevMatches=koMatches.filter(m=>m.stage===prevStage);
+        prevMatches.forEach(m=>{
+          // Winner = team with more goals, or whichever team_id is set if scores not entered
+          if(m.actual_home_goals!=null&&m.actual_away_goals!=null&&m.actual_home_team_id&&m.actual_away_team_id){
+            const winner=m.actual_home_goals>=m.actual_away_goals?m.actual_home_team_id:m.actual_away_team_id;
+            s.add(winner);
+          }
+        });
+      }
+    }
+    return s;
+  };
+
+  return(
+    <div>
+      <div style={{display:'flex',gap:16,marginBottom:'1.5rem',flexWrap:'wrap',fontSize:12,color:'var(--ink3)'}}>
+        <span style={{display:'flex',alignItems:'center',gap:6}}><span style={{width:12,height:12,borderRadius:2,background:'#2a5c3f',display:'inline-block'}}/> Correct prediction</span>
+        <span style={{display:'flex',alignItems:'center',gap:6}}><span style={{width:12,height:12,borderRadius:2,background:'var(--white)',border:'1px solid var(--border)',display:'inline-block'}}/> Predicted — result pending</span>
+      </div>
+      {stages.map(stage=>{
+        const pts=STAGE_PTS[stage];
+        const actualTeams=actualTeamsInStage(stage);
+        const hasActual=actualTeams.size>0;
+        const stageSize={r32:32,r16:16,qf:8,sf:4,final:2}[stage]||32;
+        // Always show all stages
+        return(
+          <div key={stage} style={{marginBottom:'2.5rem'}}>
+            <div className="group-title" style={{marginBottom:'1rem'}}>
+              {STAGE_LABELS[stage]} <span style={{fontFamily:'var(--font-sans)',fontSize:11,color:'var(--ink4)',fontWeight:400}}>· {pts} pts per team advancing</span>
+            </div>
+            <div style={{border:'1px solid var(--border)',borderRadius:'var(--rl)',overflow:'hidden'}}>
+              {/* Header row */}
+              <div style={{display:'flex',alignItems:'center',padding:'8px 14px',background:'var(--cream)',borderBottom:'1px solid var(--border)'}}>
+                <div style={{width:180,flexShrink:0,fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'1px',color:'var(--ink4)'}}>
+                  {hasActual?'Teams qualified':'Player'}
+                </div>
+                <div style={{flex:1,fontSize:10,color:'var(--ink4)',fontWeight:400}}>
+                  {hasActual
+                    ? <span style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+                        {[...actualTeams].sort((a,b)=>(teamMap[a]?.name||'').localeCompare(teamMap[b]?.name||'')).map(tid=>(
+                          <Flag key={tid} name={teamMap[tid]?.name} size={16}/>
+                        ))}
+                      </span>
+                    : <span style={{fontStyle:'italic',fontSize:11}}>Predicted picks — {stageSize} teams</span>
+                  }
+                </div>
+                <div style={{width:50,flexShrink:0,textAlign:'right',fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'1px',color:'var(--ink4)'}}>Pts</div>
+              </div>
+              {/* One row per user — flat list of their predicted flags */}
+              {sortedProfiles.map((pr,i)=>{
+                const predictedTeams=getUserPredictedTeams(pr.id,stage);
+                const predictedArr=[...predictedTeams].sort((a,b)=>(teamMap[a]?.name||'').localeCompare(teamMap[b]?.name||''));
+                const isYou=pr.id===session.user.id;
+                const correctCount=predictedArr.filter(t=>actualTeams.has(t)).length;
+                const ptsEarned=correctCount*pts;
+                const isLast=i===sortedProfiles.length-1;
+                return(
+                  <div key={pr.id} style={{display:'flex',alignItems:'center',padding:'8px 14px',borderBottom:isLast?'none':'1px solid var(--border)',background:isYou?'#f7faf8':'var(--white)',gap:8}}>
+                    <div style={{width:180,flexShrink:0,fontSize:13,fontWeight:isYou?600:400,color:'var(--ink)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                      {pr.display_name}{isYou&&<span style={{fontSize:10,color:'var(--ink4)',marginLeft:5}}>you</span>}
+                    </div>
+                    <div style={{flex:1,display:'flex',gap:3,flexWrap:'wrap'}}>
+                      {predictedArr.length===0
+                        ? <span style={{fontSize:11,color:'var(--ink4)',fontStyle:'italic'}}>Predictions pending</span>
+                        : predictedArr.map(tid=>{
+                            const correct=hasActual&&actualTeams.has(tid);
+                            const wrong=hasActual&&!actualTeams.has(tid);
+                            return(
+                              <span key={tid} style={{
+                                display:'inline-flex',alignItems:'center',justifyContent:'center',
+                                width:28,height:28,borderRadius:'50%',
+                                background:correct?'#2a5c3f':wrong?'#fdf0f0':'var(--cream)',
+                                border:`2px solid ${correct?'#2a5c3f':wrong?'#e8c5c4':'var(--border)'}`,
+                                flexShrink:0,
+                                transform:correct?'scale(1.15)':'scale(1)',
+                                boxShadow:correct?'0 0 0 2px #e8f4ee':'none',
+                              }} title={teamMap[tid]?.name}>
+                                <Flag name={teamMap[tid]?.name} size={correct?18:15}/>
+                              </span>
+                            );
+                          })
+                      }
+                    </div>
+                    <div style={{width:50,flexShrink:0,textAlign:'right',fontSize:11,fontWeight:600,color:ptsEarned>0?'var(--green)':'var(--ink4)'}}>
+                      {hasActual?(ptsEarned>0?`+${ptsEarned}`:'0'):''}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function SpecialsScoresTab({session}){
+  const[profiles,setProfiles]=useState([]);
+  const[allSpecials,setAllSpecials]=useState([]);
+  const[allAwards,setAllAwards]=useState([]);
+  const[teams,setTeams]=useState({});
+  const[userScores,setUserScores]=useState({});
+  const[loading,setLoading]=useState(true);
+  useEffect(()=>{
+    Promise.all([
+      sb.from('profiles').select('id,display_name').order('display_name'),
+      sb.from('special_predictions').select('*'),
+      sb.from('special_awards').select('*'),
+      sb.from('teams').select('*'),
+      sb.from('scores').select('*'),
+    ]).then(([{data:pr},{data:sp},{data:aw},{data:t},{data:sc}])=>{
+      setProfiles(pr||[]);setAllSpecials(sp||[]);setAllAwards(aw||[]);
+      const tMap={};(t||[]).forEach(team=>tMap[team.id]=team);setTeams(tMap);
+      const sMap={};(sc||[]).forEach(s=>sMap[s.user_id]=s);setUserScores(sMap);
+      setLoading(false);
+    });
+  },[]);
+  if(loading)return <div className="loading">Loading...</div>;
+  const sortedProfiles=[...profiles].sort((a,b)=>(userScores[b.id]?.total_points||0)-(userScores[a.id]?.total_points||0));
+  const fields=[
+    {key:'champion',label:'World Champion',render:(sp)=>{const t=sp?.champion_team_id?teams[sp.champion_team_id]:null;return t?<span style={{display:'flex',alignItems:'center',gap:5,justifyContent:'center'}}><Flag name={t.name} size={14}/>{t.name}</span>:'—';}},
+    {key:'top_scorer',label:'Top Scorer',render:(sp)=>sp?.top_scorer_name||'—'},
+    {key:'top_assister',label:'Top Assister',render:(sp)=>sp?.top_assister_name||'—'},
+    {key:'total_goals',label:'Total Goals',render:(sp)=>sp?.total_goals??'—'},
+    {key:'penalty_shootouts',label:'Penalties',render:(sp)=>sp?.penalty_shootouts??'—'},
+  ];
+  return(
+    <div>
+      <div style={{display:'flex',gap:16,marginBottom:'1.5rem',fontSize:12,color:'var(--ink3)'}}>
+        <span style={{display:'flex',alignItems:'center',gap:6}}><span style={{width:12,height:12,borderRadius:2,background:'#2a5c3f',display:'inline-block'}}/> Correct (10 pts)</span>
+      </div>
+      <div style={{border:'1px solid var(--border)',borderRadius:'var(--rl)',overflow:'hidden'}}>
+        <div style={{display:'grid',gridTemplateColumns:`180px repeat(${fields.length},1fr)`,background:'var(--cream)',borderBottom:'1px solid var(--border)'}}>
+          <div style={{padding:'8px 14px',fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'1px',color:'var(--ink4)'}}>Player</div>
+          {fields.map(f=>(
+            <div key={f.key} style={{padding:'8px 6px',textAlign:'center',fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'1px',color:'var(--ink4)',borderLeft:'1px solid var(--border)'}}>{f.label}</div>
+          ))}
+        </div>
+        {sortedProfiles.map((pr,i)=>{
+          const sp=allSpecials.find(s=>s.user_id===pr.id);
+          const isYou=pr.id===session?.user?.id;
+          const totalPts=fields.reduce((sum,f)=>{const award=allAwards.find(a=>a.user_id===pr.id&&a.category===f.key&&a.awarded);return sum+(award?10:0);},0);
+          return(
+            <div key={pr.id} style={{display:'grid',gridTemplateColumns:`180px repeat(${fields.length},1fr)`,borderBottom:i<sortedProfiles.length-1?'1px solid var(--border)':'none',background:isYou?'#f7faf8':'var(--white)'}}>
+              <div style={{padding:'10px 14px',fontSize:13,fontWeight:isYou?600:400,color:'var(--ink)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+                <span>{pr.display_name}{isYou&&<span style={{fontSize:10,color:'var(--ink4)',marginLeft:6}}>you</span>}</span>
+                {totalPts>0&&<span style={{fontSize:11,fontWeight:600,color:'var(--green)'}}>+{totalPts}</span>}
+              </div>
+              {fields.map(f=>{
+                const award=allAwards.find(a=>a.user_id===pr.id&&a.category===f.key&&a.awarded);
+                return(
+                  <div key={f.key} style={{padding:'10px 8px',borderLeft:'1px solid var(--border)',textAlign:'center',fontSize:12,background:award?'#2a5c3f':'transparent',color:award?'#ffffff':'var(--ink2)',fontWeight:award?600:400,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    {f.render(sp)}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function AdminSpecials(){
+  const[data,setData]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const[saving,setSaving]=useState({});
+  const[msg,setMsg]=useState('');
+  const[actualGoals,setActualGoals]=useState('');
+  const[goalsSaved,setGoalsSaved]=useState(false);
+
+  const load=()=>{
+    Promise.all([
+      sb.from('special_predictions').select('*,profiles(display_name)'),
+      sb.from('special_awards').select('*'),
+    ]).then(([{data:sp},{data:awards}])=>{
+      const aMap={};(awards||[]).forEach(a=>{aMap[a.user_id+'_'+a.category]=a.awarded;});
+      setData((sp||[]).map(s=>({...s,top_scorer_awarded:aMap[s.user_id+'_top_scorer']||false,top_assister_awarded:aMap[s.user_id+'_top_assister']||false,penalty_awarded:aMap[s.user_id+'_penalty_shootouts']||false})));
+      setLoading(false);
+    });
+  };
+
+  useEffect(()=>{
+    load();
+    sb.from('app_settings').select('value').eq('key','actual_total_goals').maybeSingle().then(({data})=>{
+      if(data?.value)setActualGoals(data.value);
+    });
+  },[]);
+
+  const toggleAward=async(userId,category,currentlyAwarded)=>{
+    setSaving(s=>({...s,[userId+'_'+category]:true}));
+    await sb.from('special_awards').upsert({user_id:userId,category,awarded:!currentlyAwarded},{onConflict:'user_id,category'});
+    const{data:score}=await sb.from('scores').select('*').eq('user_id',userId).single();
+    if(score){const delta=currentlyAwarded?-10:10;await sb.from('scores').update({special_points:score.special_points+delta,total_points:score.total_points+delta,last_updated:new Date().toISOString()}).eq('user_id',userId);}
+    setSaving(s=>({...s,[userId+'_'+category]:false}));setMsg('Updated!');setTimeout(()=>setMsg(''),2000);load();
+  };
+
+  const saveActualGoals=async()=>{
+    await sb.from('app_settings').upsert({key:'actual_total_goals',value:String(actualGoals)},{onConflict:'key'});
+    setGoalsSaved(true);setTimeout(()=>setGoalsSaved(false),2000);
+  };
+
+  if(loading)return <div className="loading">Loading...</div>;
+
+  return(
+    <div>
+      <div className="info-box"><p>Review extra predictions and manually award 10 points for Top Scorer, Top Assister and Penalties. Set the actual total goals for the tiebreaker.</p></div>
+      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:'1.5rem',padding:'12px 16px',background:'var(--white)',border:'1px solid var(--border)',borderRadius:'var(--rl)'}}>
+        <div style={{flex:1}}>
+          <div style={{fontSize:12,fontWeight:500,color:'var(--ink)',marginBottom:2}}>Actual Total Goals (tiebreaker)</div>
+          <div style={{fontSize:11,color:'var(--ink3)'}}>Used to break ties — whoever predicted closest wins.</div>
+        </div>
+        <input type="number" min="0" max="400" value={actualGoals} onChange={e=>setActualGoals(e.target.value)} placeholder="e.g. 142" style={{width:80,padding:'8px',textAlign:'center',border:'1px solid var(--border2)',borderRadius:'var(--r)',fontFamily:'var(--font-serif)',fontSize:'1.1rem',outline:'none'}}/>
+        <button className="btn btn-sm" onClick={saveActualGoals}>{goalsSaved?'Saved':'Save'}</button>
+      </div>
+      {msg&&<div className="success-msg" style={{marginBottom:'1rem'}}>{msg}</div>}
+      <div className="lb-wrap">
+        <table className="lb-table">
+          <thead><tr><th>Player</th><th>Top Scorer</th><th>Top Assister</th><th>Penalties</th><th>Scorer 10pts</th><th>Assister 10pts</th><th>Penalties 10pts</th></tr></thead>
+          <tbody>
+            {data.map(row=>(
+              <tr key={row.user_id}>
+                <td style={{fontWeight:500}}>{row.profiles?.display_name||'—'}</td>
+                <td style={{fontSize:13}}>{row.top_scorer_name||'—'}</td>
+                <td style={{fontSize:13}}>{row.top_assister_name||'—'}</td>
+                <td style={{fontSize:13,color:'var(--ink3)'}}>{row.penalty_shootouts??'—'}</td>
+                <td>
+                  <button className={`btn btn-sm${row.top_scorer_awarded?' btn-green':' btn-outline'}`} onClick={()=>toggleAward(row.user_id,'top_scorer',row.top_scorer_awarded)} disabled={saving[row.user_id+'_top_scorer']}>
+                    {saving[row.user_id+'_top_scorer']?'...':row.top_scorer_awarded?'Awarded':'Award 10 pts'}
+                  </button>
+                </td>
+                <td>
+                  <button className={`btn btn-sm${row.top_assister_awarded?' btn-green':' btn-outline'}`} onClick={()=>toggleAward(row.user_id,'top_assister',row.top_assister_awarded)} disabled={saving[row.user_id+'_top_assister']}>
+                    {saving[row.user_id+'_top_assister']?'...':row.top_assister_awarded?'Awarded':'Award 10 pts'}
+                  </button>
+                </td>
+                <td>
+                  <button className={`btn btn-sm${row.penalty_awarded?' btn-green':' btn-outline'}`} onClick={()=>toggleAward(row.user_id,'penalty_shootouts',row.penalty_awarded)} disabled={saving[row.user_id+'_penalty_shootouts']}>
+                    {saving[row.user_id+'_penalty_shootouts']?'...':row.penalty_awarded?'Awarded':'Award 10 pts'}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function PublishToggle(){
+  const[published,setPublished]=useState(false);
+  const[loading,setLoading]=useState(true);
+  const[saving,setSaving]=useState(false);
+  useEffect(()=>{
+    sb.from('app_settings').select('value').eq('key','scores_published').maybeSingle().then(({data})=>{
+      setPublished(data?.value==='true');setLoading(false);
+    });
+  },[]);
+  const toggle=async()=>{
+    setSaving(true);
+    const newVal=!published;
+    await sb.from('app_settings').upsert({key:'scores_published',value:String(newVal)},{onConflict:'key'});
+    setPublished(newVal);setSaving(false);
+  };
+  if(loading)return null;
+  return(
+    <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:'1.5rem',padding:'12px 16px',background:'var(--white)',border:'1px solid var(--border)',borderRadius:'var(--rl)'}}>
+      <div style={{flex:1}}>
+        <div style={{fontSize:12,fontWeight:500,color:'var(--ink)',marginBottom:2}}>Scores & Predictions visible to all users</div>
+        <div style={{fontSize:11,color:'var(--ink3)'}}>When published, all users can see everyone's predictions in the Scores & Leaderboard section.</div>
+      </div>
+      <button className={`btn btn-sm${published?' btn-green':' btn-outline'}`} onClick={toggle} disabled={saving}>
+        {saving?'...':(published?'Published — click to hide':'Hidden — click to publish')}
+      </button>
+    </div>
+  );
+}
+
+
+
+
+function AdminKnockoutBracket({allTeams,groupMatches,koMatches,actualGroupResults}){
+  const[winners,setWinners]=useState({});
+  const[saving2,setSaving2]=useState(false);
+  const[saved,setSaved]=useState(false);
+  const teamMap=useMemo(()=>{const m={};allTeams.forEach(t=>m[t.id]=t);return m;},[allTeams]);
+
+  useEffect(()=>{
+    const wMap={};
+    koMatches.forEach(m=>{
+      if(m.actual_home_team_id&&m.actual_away_team_id&&m.actual_home_goals!=null){
+        const w=m.actual_home_goals>=m.actual_away_goals?m.actual_home_team_id:m.actual_away_team_id;
+        wMap[m.id]=w;
+      }
+    });
+    setWinners(wMap);
+  },[koMatches]);
+
+  const{posMap,thirdSlots,standings}=useMemo(()=>{
+    if(!allTeams.length||!groupMatches.length)return{posMap:{},thirdSlots:{},standings:{}};
+    return deriveR32Teams(allTeams,groupMatches,actualGroupResults);
+  },[allTeams,groupMatches,actualGroupResults]);
+
+  const best8thirds=useMemo(()=>{
+    const allThirds=GROUPS.map(g=>standings[g]?.[2]).filter(Boolean).sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
+    return allThirds.slice(0,8).map(t=>t.id);
+  },[standings]);
+
+  const groupResultsCount=groupMatches.filter(m=>actualGroupResults[m.id]?.home!=null&&actualGroupResults[m.id]?.home!=='').length;
+  const r32TeamPairs=useMemo(()=>{
+    if(groupResultsCount<72)return R32_FIXED.map(([a,b])=>({home:null,away:null,homeLabel:a.label,awayLabel:b.label}));
+    const qualifyingGroups2=GROUPS.filter(g=>standings[g]?.[2]&&best8thirds.includes(standings[g][2].id));
+    const R32_IDX_TO_MATCHNUM2={1:74,4:77,6:79,7:80,8:81,9:82,12:85,14:87};
+    return R32_FIXED.map(([slotA,slotB],idx)=>{
+      const resolve=(slot)=>{
+        if(slot.type!=='3rd')return resolveSlot(slot,standings,best8thirds);
+        const matchNum=R32_IDX_TO_MATCHNUM2[idx];
+        if(!matchNum)return null;
+        return resolveSlotFromLookup(matchNum,qualifyingGroups2,standings);
+      };
+      return{home:resolve(slotA),away:resolve(slotB),homeLabel:slotA.label,awayLabel:slotB.label};
+    });
+  },[standings,best8thirds,groupResultsCount]);
+
+  const derivedRounds=useMemo(()=>{
+    const r32M=koMatches.filter(m=>m.stage==='r32');
+    const r16M=koMatches.filter(m=>m.stage==='r16');
+    const qfM=koMatches.filter(m=>m.stage==='qf');
+    const sfM=koMatches.filter(m=>m.stage==='sf');
+    const finM=koMatches.filter(m=>m.stage==='final');
+    const gw=(mid,h,a)=>{const p=winners[mid];return p===h?h:p===a?a:null;};
+    const r32=r32M.map((m,i)=>({matchId:m.id,matchNum:m.match_number,home:r32TeamPairs[i]?.home||null,away:r32TeamPairs[i]?.away||null,homeLabel:r32TeamPairs[i]?.homeLabel,awayLabel:r32TeamPairs[i]?.awayLabel}));
+    const r16=r16M.map((m,i)=>{const a=r32[i*2],b=r32[i*2+1];return{matchId:m.id,matchNum:m.match_number,home:a?gw(a.matchId,a.home,a.away):null,away:b?gw(b.matchId,b.home,b.away):null};});
+    const qf=qfM.map((m,i)=>{const a=r16[i*2],b=r16[i*2+1];return{matchId:m.id,matchNum:m.match_number,home:a?gw(a.matchId,a.home,a.away):null,away:b?gw(b.matchId,b.home,b.away):null};});
+    const sf=sfM.map((m,i)=>{const a=qf[i*2],b=qf[i*2+1];return{matchId:m.id,matchNum:m.match_number,home:a?gw(a.matchId,a.home,a.away):null,away:b?gw(b.matchId,b.home,b.away):null};});
+    const fin=finM.map((m,i)=>{const a=sf[i*2],b=sf[i*2+1];return{matchId:m.id,matchNum:m.match_number,home:a?gw(a.matchId,a.home,a.away):null,away:b?gw(b.matchId,b.home,b.away):null};});
+    return{r32,r16,qf,sf,final:fin};
+  },[koMatches,r32TeamPairs,winners]);
+
+  const pickWinner=(matchId,teamId)=>{
+    setWinners(w=>({...w,[matchId]:w[matchId]===teamId?null:teamId}));
+  };
+
+  const saveKo=async()=>{
+    setSaving2(true);
+    const saves=[];
+    for(const round of Object.values(derivedRounds)){
+      for(const m of round){
+        if(!m.home||!m.away)continue;
+        const winner=winners[m.matchId];
+        const update={actual_home_team_id:m.home,actual_away_team_id:m.away};
+        if(winner){
+          update.actual_home_goals=winner===m.home?1:0;
+          update.actual_away_goals=winner===m.away?1:0;
+        }
+        saves.push(sb.from('matches').update(update).eq('id',m.matchId));
+      }
+    }
+    await Promise.all(saves);
+    setSaving2(false);
+  };
+
+  const groupResultsEntered=groupResultsCount;
+  const rounds=[
+    {key:'r32',label:'Round of 32',pts:2,matches:derivedRounds.r32},
+    {key:'r16',label:'Round of 16',pts:4,matches:derivedRounds.r16},
+    {key:'qf',label:'Quarter Finals',pts:6,matches:derivedRounds.qf},
+    {key:'sf',label:'Semi Finals',pts:8,matches:derivedRounds.sf},
+    {key:'final',label:'Final',pts:10,matches:derivedRounds.final},
+  ];
+
+  return(
+    <div>
+      {groupResultsEntered<72&&(
+        <div className="info-box" style={{marginBottom:'1rem'}}>
+          <p>Enter all 72 group stage results to auto-generate the R32 bracket. ({groupResultsEntered}/72 done)</p>
+        </div>
+      )}
+      <div className="info-box" style={{marginBottom:'1.5rem'}}>
+        <p>Click the winning team in each match to advance them. The bracket builds automatically. Save when done.</p>
+      </div>
+      <div style={{display:'flex',gap:10,marginBottom:'1.5rem',alignItems:'center'}}>
+        <button className="btn btn-sm" onClick={async()=>{setSaving2(true);await saveKo();await recalcAllScores();setSaved(true);setSaving2(false);setTimeout(()=>setSaved(false),3000);}} disabled={saving2}>{saving2?'Saving & updating...':'Save & update scores'}</button>
+        {saved&&<span style={{fontSize:12,color:'var(--green)'}}>Saved & scores updated</span>}
+      </div>
+      <div className="bracket-wrap">
+        <div className="bracket-tree">
+          {rounds.map(({key,label,pts,matches})=>(
+            <div key={key} className="bracket-col">
+              <div className="bracket-col-header">{label} <span className="bracket-col-pts">({pts}p)</span></div>
+              {matches.map(({matchId,matchNum,home,away,homeLabel,awayLabel})=>{
+                const homeTeam=home?teamMap[home]:null;
+                const awayTeam=away?teamMap[away]:null;
+                const picked=winners[matchId];
+                const bothKnown=!!home&&!!away;
+                const sched=KO_SCHEDULE[matchNum]||{};
+                return(
+                  <div key={matchId} className="bracket-match-wrap">
+                    <div className="bracket-match">
+                      {sched.date&&<div className="bracket-match-label">Game {matchNum} · {sched.date} · {sched.cet} CET</div>}
+                      {[[homeTeam,home,homeLabel],[awayTeam,away,awayLabel]].map(([team,id,label],ti)=>(
+                        <div key={ti}
+                          className={`bracket-team${!team?' tbd':''}${picked===id?' selected':''}${!bothKnown?' disabled':''}`}
+                          onClick={()=>bothKnown&&pickWinner(matchId,id)}>
+                          {team&&<span className="bracket-flag"><Flag name={team.name} size={16}/></span>}
+                          <span className="bracket-name" style={{color:!team?'var(--ink4)':undefined,fontStyle:!team?'italic':undefined,fontSize:!team?'10px':undefined}}>
+                            {team?team.name:label||'TBD'}
+                          </span>
+                          {picked===id&&<span className="bracket-winner-badge">Winner</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminPage(){
+  const[tab,setTab]=useState('group');
+  const[matches,setMatches]=useState([]);
+  const[teams,setTeams]=useState({});
+  const[results,setResults]=useState({});
+  const[koTeams,setKoTeams]=useState({});
+  const[loading,setLoading]=useState(true);
+  const[saving,setSaving]=useState(false);
+  const[recalcing,setRecalcing]=useState(false);
+  const[msg,setMsg]=useState('');
+  const[lockOverride,setLockOverride]=useState(false);
+  useEffect(()=>{
+    Promise.all([sb.from('matches').select('*').order('match_number'),sb.from('teams').select('*')]).then(([{data:m},{data:t}])=>{
+      setMatches(m||[]);
+      const tMap={};(t||[]).forEach(team=>tMap[team.id]=team);setTeams(tMap);
+      const rMap={},kMap={};
+      (m||[]).forEach(match=>{
+        if(match.actual_home_goals!=null)rMap[match.id]={home:match.actual_home_goals??'',away:match.actual_away_goals??''};
+        if(match.stage!=='group')kMap[match.id]={home_id:match.actual_home_team_id||'',away_id:match.actual_away_team_id||''};
+      });
+      setResults(rMap);setKoTeams(kMap);setLoading(false);
+    });
+  },[]);
+  const updateResult=(matchId,side,val)=>{
+    if(side==='clear'){
+      setResults(r=>({...r,[matchId]:{home:'',away:''}}));
+      // Also clear from DB
+      sb.from('matches').update({actual_home_goals:null,actual_away_goals:null}).eq('id',matchId).then(({error})=>{if(error)console.error('Clear result error:',error);});
+      return;
+    }
+    const v=val===''?'':Math.max(0,parseInt(val)||0);
+    setResults(r=>({...r,[matchId]:{...r[matchId],[side]:v}}));
+  };
+  const updateKoTeam=(matchId,side,val)=>{setKoTeams(k=>({...k,[matchId]:{...k[matchId],[side]:val?parseInt(val):''},}));};
+  const saveAll=async()=>{
+    setSaving(true);setMsg('');
+    for(const[matchId,r]of Object.entries(results)){if(r.home!==''&&r.away!==''&&r.home!=null&&r.away!=null)await sb.from('matches').update({actual_home_goals:r.home,actual_away_goals:r.away}).eq('id',parseInt(matchId));}
+    for(const[matchId,k]of Object.entries(koTeams)){const u={};if(k.home_id)u.actual_home_team_id=k.home_id;if(k.away_id)u.actual_away_team_id=k.away_id;if(Object.keys(u).length)await sb.from('matches').update(u).eq('id',parseInt(matchId));}
+    setMsg('Results saved');setSaving(false);
+  };
+  const recalc=async()=>{setRecalcing(true);setMsg('');const n=await recalcAllScores();setMsg(`Scores recalculated for ${n} players`);setRecalcing(false);};
+  if(loading)return <div className="loading">Loading...</div>;
+  const groupMatches=matches.filter(m=>m.stage==='group');
+  const koMatchList=matches.filter(m=>m.stage!=='group');
+  const byGroup={};groupMatches.forEach(m=>{if(!byGroup[m.group_id])byGroup[m.group_id]=[];byGroup[m.group_id].push(m);});
+  const byStage={};koMatchList.forEach(m=>{if(!byStage[m.stage])byStage[m.stage]=[];byStage[m.stage].push(m);});
+  const filledCount=matches.filter(m=>results[m.id]?.home!==''&&results[m.id]?.away!==''&&results[m.id]?.home!=null&&results[m.id]?.away!=null).length;
+  const teamOptions=Object.values(teams).sort((a,b)=>a.name.localeCompare(b.name));
+  const selStyle={padding:'4px 8px',background:'var(--white)',border:'1px solid var(--border2)',borderRadius:'var(--r)',color:'var(--ink)',fontFamily:'var(--font-sans)',fontSize:12,outline:'none'};
+  return(
+    <div>
+      <div className="page-header"><h1 className="page-title">Admin</h1><p className="page-sub">Enter results and manage the tournament</p></div>
+      <div className="info-box" style={{marginBottom:'1.5rem'}}>
+        <div style={{fontSize:13,color:'var(--ink2)',marginBottom:8}}>
+          Deadline: June 10, 2026 23:59 Stockholm — <strong style={{color:isLocked()?'var(--red)':'var(--green)'}}>{isLocked()?'Locked':'Open'}</strong>
+        </div>
+        {isLocked()&&<button className={`btn btn-sm${lockOverride?' btn-green':' btn-outline'}`} style={{marginTop:4}} onClick={()=>setLockOverride(v=>!v)}>{lockOverride?'Predictions unlocked (admin override)':'Unlock predictions for editing'}</button>}
+      </div>
+      <PublishToggle/>
+      <div style={{display:'flex',gap:10,marginBottom:'1.5rem',flexWrap:'wrap',alignItems:'center'}}>
+        {tab==='group'&&<button className="btn btn-sm" onClick={async()=>{await saveAll();await recalc();}} disabled={saving||recalcing}>{(saving||recalcing)?'Saving...':'Save & update scores ('+filledCount+' entered)'}</button>}
+        {tab==='knockout'&&<button className="btn btn-sm btn-outline" style={{color:'var(--red)',borderColor:'var(--red)'}} onClick={async()=>{if(!window.confirm('Clear all knockout bracket results?'))return;const ids=matches.filter(m=>m.stage!=='group').map(m=>m.id);
+await Promise.all(ids.map(id=>sb.from('matches').update({actual_home_team_id:null,actual_away_team_id:null,actual_home_goals:null,actual_away_goals:null}).eq('id',id)));
+setResults(r=>{const next={...r};ids.forEach(id=>delete next[id]);return next;});
+setKoTeams({});}}>Clear knockout results</button>}
+        {msg&&<span style={{fontSize:12,color:'var(--green)'}}>{msg}</span>}
+      </div>
+      <div className="tabs">
+        <button className={`tab${tab==='group'?' active':''}`} onClick={()=>setTab('group')}>Group Stage</button>
+        <button className={`tab${tab==='knockout'?' active':''}`} onClick={()=>setTab('knockout')}>Knockout</button>
+        <button className={`tab${tab==='specials'?' active':''}`} onClick={()=>setTab('specials')}>Extra Predictions</button>
+      </div>
+      {tab==='specials'&&<AdminSpecials/>}
+      {tab==='group'&&(()=>{
+        // Group matches by date using MATCH_SCHEDULE
+        const byDate={};
+        groupMatches.forEach(m=>{
+          const date=MATCH_SCHEDULE[m.match_number]?.date||'Unknown';
+          if(!byDate[date])byDate[date]=[];
+          byDate[date].push(m);
+        });
+        // Sort dates chronologically using actual date parsing
+        const monthMap={'Jan':1,'Feb':2,'Mar':3,'Apr':4,'May':5,'Jun':6,'Jul':7,'Aug':8,'Sep':9,'Oct':10,'Nov':11,'Dec':12};
+        const parseDate=d=>{const[mon,day]=d.split(' ');return(monthMap[mon]||0)*100+parseInt(day||0);};
+        const sortedDates=Object.keys(byDate).sort((a,b)=>parseDate(a)-parseDate(b));
+        return sortedDates.map(date=>{
+          const dayMatches=byDate[date].sort((a,b)=>a.match_number-b.match_number);
+          const doneCount=dayMatches.filter(m=>results[m.id]?.home!=null&&results[m.id]?.home!=='').length;
+          return(
+            <div key={date} className="group-section">
+              <div className="group-title">{date} <span style={{fontFamily:'var(--font-sans)',fontSize:11,color:'var(--ink4)',fontWeight:400}}>· {doneCount}/{dayMatches.length} entered</span></div>
+              {dayMatches.map(m=>{
+                const home=teams[m.home_team_id],away=teams[m.away_team_id];
+                const hasResult=results[m.id]?.home!==''&&results[m.id]?.away!==''&&results[m.id]?.home!=null&&results[m.id]?.away!=null;
+                const sched=MATCH_SCHEDULE[m.match_number]||{};
+                return(
+                  <div key={m.id} className={`admin-match${hasResult?' has-result':''}`} style={{flexWrap:'wrap'}}>
+                    <div style={{width:'100%',fontSize:10,color:'var(--ink4)',marginBottom:4,display:'flex',justifyContent:'space-between'}}>
+                      <span>{sched.cet} CET · {sched.venue?.split(',')[0]}</span>
+                      <span style={{background:'var(--cream)',padding:'1px 6px',borderRadius:3,fontWeight:600}}>Group {m.group_id}</span>
+                    </div>
+                    <div className="admin-team"><Flag name={home?.name} size={14}/><span>{home?.name}</span></div>
+                    <input className="score-input" type="number" min="0" max="20" value={results[m.id]?.home??''} onChange={e=>updateResult(m.id,'home',e.target.value)} placeholder="—"/>
+                    <span className="match-vs">–</span>
+                    <input className="score-input" type="number" min="0" max="20" value={results[m.id]?.away??''} onChange={e=>updateResult(m.id,'away',e.target.value)} placeholder="—"/>
+                    <div className="admin-team away"><Flag name={away?.name} size={14}/><span>{away?.name}</span></div>
+                    {hasResult&&<button onClick={()=>updateResult(m.id,'clear','')} style={{marginLeft:4,flexShrink:0,padding:'2px 8px',fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.5px',background:'transparent',border:'1px solid var(--border2)',borderRadius:'var(--r)',color:'var(--ink3)',cursor:'pointer'}} title="Clear result">✕</button>}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        });
+      })()}
+      {tab==='knockout'&&<AdminKnockoutBracket
+        allTeams={Object.values(teams)}
+        groupMatches={matches.filter(m=>m.stage==='group')}
+        koMatches={matches.filter(m=>m.stage!=='group')}
+        actualGroupResults={results}
+      />}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
